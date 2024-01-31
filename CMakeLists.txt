@@ -23,12 +23,14 @@ option(FSC_BUILD_TESTS "Build the tests" ON)
 
 if(CMAKE_COMPILER_IS_GNUCXX)
 	set_source_files_properties("md4_avx.cpp" PROPERTIES COMPILE_FLAGS -mavx512f)
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    set_source_files_properties("md4_avx.cpp" PROPERTIES COMPILE_FLAGS -mavx512f)
 elseif(GLM_USE_INTEL)
 	set_source_files_properties("md4_avx.cpp" PROPERTIES COMPILE_FLAGS /QxAVX512f)
 elseif(MSVC)
-	set_source_files_properties("md4_avx.cpp" PROPERTIES COMPILE_FLAGS /arch:AVX512f)
+	set_source_files_properties("md4_avx.cpp" PROPERTIES COMPILE_FLAGS /arch:AVX)
 endif()
-add_library(FSC STATIC "md4.cpp" "md4_avx.cpp" "md4.h")
+add_library(FSC STATIC "cpuid.cpp" "md4.h" "md4.cpp" "md4_avx.cpp")
 target_include_directories(FSC INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 set_property(TARGET FSC PROPERTY CXX_STANDARD 20) # C++ language to use
 
@@ -41,8 +43,12 @@ else()
         target_compile_options(FSC PRIVATE /W4 /WX)
         target_link_options(FSC PRIVATE /W4 /WX)
     else()
-        target_compile_options(FSC PRIVATE -Wall -Wextra -pedantic -Werror -Wl,--fatal-warnings   -Wno-ignored-attributes -Wno-psabi)
+        target_compile_options(FSC PRIVATE -Wall -Wextra -pedantic -Werror -Wl,--fatal-warnings)
     endif()
+endif()
+
+if(CMAKE_COMPILER_IS_GNUCXX)
+    target_compile_options(FSC PRIVATE -Wno-ignored-attributes -Wno-psabi)
 endif()
 
 ###############################################################################################################

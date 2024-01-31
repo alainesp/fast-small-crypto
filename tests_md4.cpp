@@ -126,6 +126,8 @@ TEST(md4, plain_c)
 // SSE2
 TEST(md4, md4_block_SSE2_x1)
 {
+	if (!(simd::CpuFeatures::SSE2 & simd::get_cpu_features())) return;
+
 	constexpr size_t parallel_factor = 1;
 	constexpr size_t parallelism = parallel_factor * sizeof(simd::Vec128u32) / sizeof(uint32_t);
 
@@ -165,6 +167,8 @@ TEST(md4, md4_block_SSE2_x1)
 }
 TEST(md4, md4_block_SSE2_x2)
 {
+	if (!(simd::CpuFeatures::SSE2 & simd::get_cpu_features())) return;
+
 	constexpr size_t parallel_factor = 2;
 	constexpr size_t parallelism = parallel_factor * sizeof(simd::Vec128u32) / sizeof(uint32_t);
 
@@ -204,6 +208,8 @@ TEST(md4, md4_block_SSE2_x2)
 }
 TEST(md4, md4_block_SSE2_x3)
 {
+	if (!(simd::CpuFeatures::SSE2 & simd::get_cpu_features())) return;
+
 	constexpr size_t parallel_factor = 3;
 	constexpr size_t parallelism = parallel_factor * sizeof(simd::Vec128u32) / sizeof(uint32_t);
 
@@ -243,6 +249,8 @@ TEST(md4, md4_block_SSE2_x3)
 }
 TEST(md4, md4_block_SSE2_x4)
 {
+	if (!(simd::CpuFeatures::SSE2 & simd::get_cpu_features())) return;
+
 	constexpr size_t parallel_factor = 4;
 	constexpr size_t parallelism = parallel_factor * sizeof(simd::Vec128u32) / sizeof(uint32_t);
 
@@ -283,6 +291,8 @@ TEST(md4, md4_block_SSE2_x4)
 // AVX
 TEST(md4, md4_block_AVX_x1)
 {
+	if (!(simd::CpuFeatures::AVX & simd::get_cpu_features())) return;
+
 	constexpr size_t parallel_factor = 1;
 	constexpr size_t parallelism = parallel_factor * sizeof(simd::Vec128u32) / sizeof(uint32_t);
 
@@ -322,6 +332,8 @@ TEST(md4, md4_block_AVX_x1)
 }
 TEST(md4, md4_block_AVX_x2)
 {
+	if (!(simd::CpuFeatures::AVX & simd::get_cpu_features())) return;
+
 	constexpr size_t parallel_factor = 2;
 	constexpr size_t parallelism = parallel_factor * sizeof(simd::Vec128u32) / sizeof(uint32_t);
 
@@ -361,6 +373,8 @@ TEST(md4, md4_block_AVX_x2)
 }
 TEST(md4, md4_block_AVX_x3)
 {
+	if (!(simd::CpuFeatures::AVX & simd::get_cpu_features())) return;
+
 	constexpr size_t parallel_factor = 3;
 	constexpr size_t parallelism = parallel_factor * sizeof(simd::Vec128u32) / sizeof(uint32_t);
 
@@ -400,6 +414,8 @@ TEST(md4, md4_block_AVX_x3)
 }
 TEST(md4, md4_block_AVX_x4)
 {
+	if (!(simd::CpuFeatures::AVX & simd::get_cpu_features())) return;
+
 	constexpr size_t parallel_factor = 4;
 	constexpr size_t parallelism = parallel_factor * sizeof(simd::Vec128u32) / sizeof(uint32_t);
 
@@ -440,6 +456,8 @@ TEST(md4, md4_block_AVX_x4)
 // AVX2
 TEST(md4, md4_block_AVX2_x1)
 {
+	if (!(simd::CpuFeatures::AVX2 & simd::get_cpu_features())) return;
+
 	constexpr size_t parallel_factor = 1;
 	constexpr size_t parallelism = parallel_factor * sizeof(simd::Vec256u32) / sizeof(uint32_t);
 
@@ -479,6 +497,8 @@ TEST(md4, md4_block_AVX2_x1)
 }
 TEST(md4, md4_block_AVX2_x2)
 {
+	if (!(simd::CpuFeatures::AVX2 & simd::get_cpu_features())) return;
+
 	constexpr size_t parallel_factor = 2;
 	constexpr size_t parallelism = parallel_factor * sizeof(simd::Vec256u32) / sizeof(uint32_t);
 
@@ -518,6 +538,8 @@ TEST(md4, md4_block_AVX2_x2)
 }
 TEST(md4, md4_block_AVX2_x3)
 {
+	if (!(simd::CpuFeatures::AVX2 & simd::get_cpu_features())) return;
+
 	constexpr size_t parallel_factor = 3;
 	constexpr size_t parallelism = parallel_factor * sizeof(simd::Vec256u32) / sizeof(uint32_t);
 
@@ -557,6 +579,8 @@ TEST(md4, md4_block_AVX2_x3)
 }
 TEST(md4, md4_block_AVX2_x4)
 {
+	if (!(simd::CpuFeatures::AVX2 & simd::get_cpu_features())) return;
+
 	constexpr size_t parallel_factor = 4;
 	constexpr size_t parallelism = parallel_factor * sizeof(simd::Vec256u32) / sizeof(uint32_t);
 
@@ -597,6 +621,8 @@ TEST(md4, md4_block_AVX2_x4)
 // AVX512
 TEST(md4, md4_block_AVX512_x1)
 {
+	if (!(simd::CpuFeatures::AVX512F & simd::get_cpu_features())) return;
+
 	constexpr size_t parallel_factor = 1;
 	constexpr size_t parallelism = parallel_factor * sizeof(simd::Vec512u32) / sizeof(uint32_t);
 
@@ -636,6 +662,8 @@ TEST(md4, md4_block_AVX512_x1)
 }
 TEST(md4, md4_block_AVX512_x2)
 {
+	if (!(simd::CpuFeatures::AVX512F & simd::get_cpu_features())) return;
+
 	constexpr size_t parallel_factor = 2;
 	constexpr size_t parallelism = parallel_factor * sizeof(simd::Vec512u32) / sizeof(uint32_t);
 
@@ -675,6 +703,8 @@ TEST(md4, md4_block_AVX512_x2)
 }
 TEST(md4, md4_block_AVX512_x3)
 {
+	if (!(simd::CpuFeatures::AVX512F & simd::get_cpu_features())) return;
+
 	constexpr size_t parallel_factor = 3;
 	constexpr size_t parallelism = parallel_factor * sizeof(simd::Vec512u32) / sizeof(uint32_t);
 
@@ -714,6 +744,8 @@ TEST(md4, md4_block_AVX512_x3)
 }
 TEST(md4, md4_block_AVX512_x4)
 {
+	if (!(simd::CpuFeatures::AVX512F & simd::get_cpu_features())) return;
+
 	constexpr size_t parallel_factor = 4;
 	constexpr size_t parallelism = parallel_factor * sizeof(simd::Vec512u32) / sizeof(uint32_t);
 

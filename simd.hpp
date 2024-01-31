@@ -853,4 +853,66 @@ template<class Vector, class T> static SIMD_INLINE Vector operator>>=(Vector& a,
 template<class Vector, class T = SimdScalarType> static SIMD_INLINE Vector rotl(const Vector a, const int b) noexcept { return (a << b) | (a >> (sizeof(T) * 8 - b)); }
 template<class Vector, class T = SimdScalarType> static SIMD_INLINE Vector rotr(const Vector a, const int b) noexcept { return (a >> b) | (a << (sizeof(T) * 8 - b)); }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// CPU feature detection
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+enum class CpuFeatures : uint32_t {
+	NONE       = 0,
+	PLAIN_C    = 1 <<  0,
+#if SIMD_ARCH_ARM
+	NEON       = 1 <<  1,
+	VFPv4      = 1 <<  2,
+	AES        = 1 <<  3,
+
+	SVE        = 1 <<  4,
+	SVE2       = 1 <<  5
+#elif SIMD_ARCH_X86
+	SSE        = 1 <<  1,
+	SSE2       = 1 <<  2,
+	SSE3       = 1 <<  3,
+	SSSE3      = 1 <<  4,
+	SSE41      = 1 <<  5,
+	SSE42      = 1 <<  6,
+	CLMUL      = 1 <<  7,
+	AES        = 1 <<  8,
+
+	AVX        = 1 <<  9,
+	AVX2       = 1 << 10,
+	F16C       = 1 << 11,
+	FMA        = 1 << 12,
+	LZCNT      = 1 << 13,
+	BMI        = 1 << 14,
+	BMI2       = 1 << 15,
+
+	AVX512F    = 1 << 16,
+	AVX512VL   = 1 << 17,
+	AVX512CD   = 1 << 18,
+	AVX512DQ   = 1 << 19,
+	AVX512BW   = 1 << 20,
+	AVX512FP16 = 1 << 21,
+
+	VNNI       = 1 << 22,
+	VPCLMULQDQ = 1 << 23,
+	VBMI       = 1 << 24,
+	VBMI2      = 1 << 25,
+	VAES       = 1 << 26,
+	POPCNTDQ   = 1 << 27,
+	BITALG     = 1 << 28,
+	GFNI	   = 1 << 29
+#endif
+};
+static SIMD_INLINE bool operator&(const CpuFeatures lhs, const CpuFeatures rhs) noexcept
+{
+    return static_cast<uint32_t>(lhs) & static_cast<uint32_t>(rhs);
+}
+static SIMD_INLINE CpuFeatures operator|(const CpuFeatures lhs, const CpuFeatures rhs) noexcept
+{
+    return static_cast<CpuFeatures>(static_cast<uint32_t>(lhs) | static_cast<uint32_t>(rhs));
+}
+static SIMD_INLINE CpuFeatures operator|=(CpuFeatures& lhs, const CpuFeatures rhs) noexcept
+{
+    return (lhs = static_cast<CpuFeatures>(static_cast<uint32_t>(lhs) | static_cast<uint32_t>(rhs)));
+}
+CpuFeatures get_cpu_features() noexcept;
+
 }
