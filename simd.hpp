@@ -98,6 +98,34 @@
 #define SIMD_OS_LINUX 0
 #endif
 
+// Include files outside namespace
+#if SIMD_ARCH_ARM
+#include <arm_neon.h>
+#endif
+
+#if SIMD_ARCH_X86
+#include <emmintrin.h> // sse2
+#include <immintrin.h> // avx/avx2
+#ifdef __clang__
+    #include <avxintrin.h>
+    // avxintrin defines __m256i and must come before avx2intrin.
+    #include <avx2intrin.h>
+    #include <bmi2intrin.h>  // _pext_u64
+    #include <f16cintrin.h>
+    #include <fmaintrin.h>
+    #include <smmintrin.h>
+
+    #include <avx512fintrin.h>
+    #include <avx512vlintrin.h>
+    #include <avx512bwintrin.h>
+    #include <avx512vlbwintrin.h>
+    #include <avx512dqintrin.h>
+    #include <avx512vldqintrin.h>
+    #include <avx512cdintrin.h>
+    #include <avx512vlcdintrin.h>
+#endif
+#endif
+
 namespace simd
 {
 
@@ -105,7 +133,6 @@ namespace simd
 // ARM Neon
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #if SIMD_ARCH_ARM
-#include <arm_neon.h>
 using Vec128u8  = uint8x16_t;
 using Vec128i8  =  int8x16_t;
 using Vec128u16 = uint16x8_t;
@@ -125,8 +152,19 @@ using Vec128f64 = float64x2_t;
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // x86 SSE2
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#ifndef _MSC_VER
+template <class RAW> struct BaseVector
+{
+    BaseVector() noexcept = default;
+    BaseVector(const RAW raw) noexcept : raw(raw) {}
+    operator RAW() const noexcept { return raw; }
+
+    RAW raw;
+};
+#endif
+
 #if SIMD_ARCH_X86
-#include <emmintrin.h>
+#ifdef _MSC_VER
 using Vec128u8  = __m128i;
 using Vec128i8  = __m128i;
 using Vec128u16 = __m128i;
@@ -138,31 +176,26 @@ using Vec128i64 = __m128i;
 using Vec128Int = __m128i;
 using Vec128f32 = __m128 ;
 using Vec128f64 = __m128d;
+#else
+using Vec128u8  = BaseVector<__m128i>;
+using Vec128i8  = BaseVector<__m128i>;
+using Vec128u16 = BaseVector<__m128i>;
+using Vec128i16 = BaseVector<__m128i>;
+using Vec128u32 = BaseVector<__m128i>;
+using Vec128i32 = BaseVector<__m128i>;
+using Vec128u64 = BaseVector<__m128i>;
+using Vec128i64 = BaseVector<__m128i>;
+using Vec128Int = BaseVector<__m128i>;
+using Vec128f32 = BaseVector<__m128 >;
+using Vec128f64 = BaseVector<__m128d>;
+#endif
 #endif
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // x86 AVX/AVX2
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #if SIMD_ARCH_X86
-#include <immintrin.h>
-#ifdef __clang__
-    #include <avxintrin.h>
-    // avxintrin defines __m256i and must come before avx2intrin.
-    #include <avx2intrin.h>
-    #include <bmi2intrin.h>  // _pext_u64
-    #include <f16cintrin.h>
-    #include <fmaintrin.h>
-    #include <smmintrin.h>
-
-    #include <avx512fintrin.h>
-    #include <avx512vlintrin.h>
-    #include <avx512bwintrin.h>
-    #include <avx512vlbwintrin.h>
-    #include <avx512dqintrin.h>
-    #include <avx512vldqintrin.h>
-    #include <avx512cdintrin.h>
-    #include <avx512vlcdintrin.h>
-#endif
+#ifdef _MSC_VER
 using Vec256u8  = __m256i;
 using Vec256i8  = __m256i;
 using Vec256u16 = __m256i;
@@ -174,12 +207,26 @@ using Vec256i64 = __m256i;
 using Vec256Int = __m256i;
 using Vec256f32 = __m256 ;
 using Vec256f64 = __m256d;
+#else
+using Vec256u8  = BaseVector<__m256i>;
+using Vec256i8  = BaseVector<__m256i>;
+using Vec256u16 = BaseVector<__m256i>;
+using Vec256i16 = BaseVector<__m256i>;
+using Vec256u32 = BaseVector<__m256i>;
+using Vec256i32 = BaseVector<__m256i>;
+using Vec256u64 = BaseVector<__m256i>;
+using Vec256i64 = BaseVector<__m256i>;
+using Vec256Int = BaseVector<__m256i>;
+using Vec256f32 = BaseVector<__m256 >;
+using Vec256f64 = BaseVector<__m256d>;
+#endif
 #endif
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // x86 AVX512
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #if SIMD_ARCH_X86
+#ifdef _MSC_VER
 using Vec512u8  = __m512i;
 using Vec512i8  = __m512i;
 using Vec512u16 = __m512i;
@@ -191,6 +238,19 @@ using Vec512i64 = __m512i;
 using Vec512Int = __m512i;
 using Vec512f32 = __m512 ;
 using Vec512f64 = __m512d;
+#else
+using Vec512u8  = BaseVector<__m512i>;
+using Vec512i8  = BaseVector<__m512i>;
+using Vec512u16 = BaseVector<__m512i>;
+using Vec512i16 = BaseVector<__m512i>;
+using Vec512u32 = BaseVector<__m512i>;
+using Vec512i32 = BaseVector<__m512i>;
+using Vec512u64 = BaseVector<__m512i>;
+using Vec512i64 = BaseVector<__m512i>;
+using Vec512Int = BaseVector<__m512i>;
+using Vec512f32 = BaseVector<__m512 >;
+using Vec512f64 = BaseVector<__m512d>;
+#endif
 #endif
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -288,17 +348,17 @@ static SIMD_INLINE Vec128 loadu(const Vec128* SIMD_RESTRICT unaligned) noexcept 
 
 #if SIMD_ARCH_X86
 // SSE2
-static SIMD_INLINE Vec128Int load (const Vec128Int* SIMD_RESTRICT   aligned) noexcept { return _mm_load_si128(aligned); }
+static SIMD_INLINE Vec128Int load (const Vec128Int* SIMD_RESTRICT   aligned) noexcept { return _mm_load_si128(reinterpret_cast<const __m128i*>(aligned)); }
 static SIMD_INLINE Vec128f32 load (const Vec128f32* SIMD_RESTRICT   aligned) noexcept { return _mm_load_ps(reinterpret_cast<const float*>(aligned)); }
 static SIMD_INLINE Vec128f64 load (const Vec128f64* SIMD_RESTRICT   aligned) noexcept { return _mm_load_pd(reinterpret_cast<const double*>(aligned)); }
-static SIMD_INLINE Vec128Int loadu(const Vec128Int* SIMD_RESTRICT unaligned) noexcept { return _mm_loadu_si128(unaligned); }
+static SIMD_INLINE Vec128Int loadu(const Vec128Int* SIMD_RESTRICT unaligned) noexcept { return _mm_loadu_si128(reinterpret_cast<const __m128i*>(unaligned)); }
 static SIMD_INLINE Vec128f32 loadu(const Vec128f32* SIMD_RESTRICT unaligned) noexcept { return _mm_loadu_ps(reinterpret_cast<const float*>(unaligned)); }
 static SIMD_INLINE Vec128f64 loadu(const Vec128f64* SIMD_RESTRICT unaligned) noexcept { return _mm_loadu_pd(reinterpret_cast<const double*>(unaligned)); }
 // AVX/AVX2
-static SIMD_INLINE Vec256Int load (const Vec256Int* SIMD_RESTRICT   aligned) noexcept { return _mm256_load_si256(aligned); }
+static SIMD_INLINE Vec256Int load (const Vec256Int* SIMD_RESTRICT   aligned) noexcept { return _mm256_load_si256(reinterpret_cast<const __m256i*>(aligned)); }
 static SIMD_INLINE Vec256f32 load (const Vec256f32* SIMD_RESTRICT   aligned) noexcept { return _mm256_load_ps(reinterpret_cast<const float*>(aligned)); }
 static SIMD_INLINE Vec256f64 load (const Vec256f64* SIMD_RESTRICT   aligned) noexcept { return _mm256_load_pd(reinterpret_cast<const double*>(aligned)); }
-static SIMD_INLINE Vec256Int loadu(const Vec256Int* SIMD_RESTRICT unaligned) noexcept { return _mm256_loadu_si256(unaligned); }
+static SIMD_INLINE Vec256Int loadu(const Vec256Int* SIMD_RESTRICT unaligned) noexcept { return _mm256_loadu_si256(reinterpret_cast<const __m256i*>(unaligned)); }
 static SIMD_INLINE Vec256f32 loadu(const Vec256f32* SIMD_RESTRICT unaligned) noexcept { return _mm256_loadu_ps(reinterpret_cast<const float*>(unaligned)); }
 static SIMD_INLINE Vec256f64 loadu(const Vec256f64* SIMD_RESTRICT unaligned) noexcept { return _mm256_loadu_pd(reinterpret_cast<const double*>(unaligned)); }
 // AVX512
@@ -328,17 +388,17 @@ static SIMD_INLINE void storeu(Vec128* SIMD_RESTRICT unaligned, const Vec128u8 v
 
 #if SIMD_ARCH_X86
 // SSE2
-static SIMD_INLINE void store (Vec128Int* SIMD_RESTRICT   aligned, const Vec128Int v) noexcept { _mm_store_si128(aligned, v); }
+static SIMD_INLINE void store (Vec128Int* SIMD_RESTRICT   aligned, const Vec128Int v) noexcept { _mm_store_si128(reinterpret_cast<__m128i*>(aligned), v); }
 static SIMD_INLINE void store (Vec128f32* SIMD_RESTRICT   aligned, const Vec128f32 v) noexcept { _mm_store_ps(reinterpret_cast<float*>(aligned) , v); }
 static SIMD_INLINE void store (Vec128f64* SIMD_RESTRICT   aligned, const Vec128f64 v) noexcept { _mm_store_pd(reinterpret_cast<double*>(aligned), v); }
-static SIMD_INLINE void storeu(Vec128Int* SIMD_RESTRICT unaligned, const Vec128Int v) noexcept { _mm_storeu_si128(unaligned, v); }
+static SIMD_INLINE void storeu(Vec128Int* SIMD_RESTRICT unaligned, const Vec128Int v) noexcept { _mm_storeu_si128(reinterpret_cast<__m128i*>(unaligned), v); }
 static SIMD_INLINE void storeu(Vec128f32* SIMD_RESTRICT unaligned, const Vec128f32 v) noexcept { _mm_storeu_ps(reinterpret_cast<float*>(unaligned) , v) ; }
 static SIMD_INLINE void storeu(Vec128f64* SIMD_RESTRICT unaligned, const Vec128f64 v) noexcept { _mm_storeu_pd(reinterpret_cast<double*>(unaligned), v) ; }
 // AVX/AVX2
-static SIMD_INLINE void store (Vec256Int* SIMD_RESTRICT   aligned, const Vec256Int v) noexcept { _mm256_store_si256(aligned, v); }
+static SIMD_INLINE void store (Vec256Int* SIMD_RESTRICT   aligned, const Vec256Int v) noexcept { _mm256_store_si256(reinterpret_cast<__m256i*>(aligned), v); }
 static SIMD_INLINE void store (Vec256f32* SIMD_RESTRICT   aligned, const Vec256f32 v) noexcept { _mm256_store_ps(reinterpret_cast<float*>(aligned) , v); }
 static SIMD_INLINE void store (Vec256f64* SIMD_RESTRICT   aligned, const Vec256f64 v) noexcept { _mm256_store_pd(reinterpret_cast<double*>(aligned), v); }
-static SIMD_INLINE void storeu(Vec256Int* SIMD_RESTRICT unaligned, const Vec256Int v) noexcept { _mm256_storeu_si256(unaligned, v); }
+static SIMD_INLINE void storeu(Vec256Int* SIMD_RESTRICT unaligned, const Vec256Int v) noexcept { _mm256_storeu_si256(reinterpret_cast<__m256i*>(unaligned), v); }
 static SIMD_INLINE void storeu(Vec256f32* SIMD_RESTRICT unaligned, const Vec256f32 v) noexcept { _mm256_storeu_ps(reinterpret_cast<float*>(unaligned) , v); }
 static SIMD_INLINE void storeu(Vec256f64* SIMD_RESTRICT unaligned, const Vec256f64 v) noexcept { _mm256_storeu_pd(reinterpret_cast<double*>(unaligned), v); }
 // AVX512
