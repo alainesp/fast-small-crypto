@@ -18,7 +18,7 @@ endif()
 # Library configuration
 ###############################################################################################################
 option(FSC_BUILD_EXAMPLE "Build the example" OFF)
-option(FSC_BUILD_PERFORMANCE "Build the performance testing" OFF)
+option(FSC_BUILD_BENCHMARK "Build the benchmark testing" ON)
 option(FSC_BUILD_TESTS "Build the tests" ON)
 
 if(CMAKE_COMPILER_IS_GNUCXX)
@@ -46,25 +46,10 @@ else()
 endif()
 
 ###############################################################################################################
-# Executables
-###############################################################################################################
-#if(FSC_BUILD_EXAMPLE)
-#    add_executable(fsc-examples "example.cpp")
-#    set_property(TARGET fsc-examples PROPERTY CXX_STANDARD 20)	 # C++ language to use
-#    target_link_libraries(fsc-examples PRIVATE FSC)
-#endif()
-#
-#if(FSC_BUILD_PERFORMANCE)
-#    add_executable(fsc-performance "performance.cpp")
-#    set_property(TARGET fsc-performance PROPERTY CXX_STANDARD 20)	 # C++ language to use
-#    target_link_libraries(fsc-performance PRIVATE FSC)
-#endif()
-
-###############################################################################################################
 # Testing
 ###############################################################################################################
+include(FetchContent)
 if(FSC_BUILD_TESTS)
-    include(FetchContent)
     SET(BUILD_GMOCK OFF)
     FetchContent_Declare(googletest URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.zip)
     FetchContent_Declare(wy URL https://github.com/alainesp/wy/archive/refs/heads/main.zip)
@@ -74,10 +59,29 @@ if(FSC_BUILD_TESTS)
 
     enable_testing()
 
-    add_executable(runUnitTests "tests.cpp")
+    add_executable(runUnitTests "tests.cpp" "tests_md4.cpp")
     set_property(TARGET runUnitTests PROPERTY CXX_STANDARD 20) # C++ language to use
     target_link_libraries(runUnitTests PRIVATE FSC gtest_main wy)
 
     include(GoogleTest)
     gtest_discover_tests(runUnitTests)
+endif()
+
+###############################################################################################################
+# Executables
+###############################################################################################################
+#if(FSC_BUILD_EXAMPLE)
+#    add_executable(fsc-examples "example.cpp")
+#    set_property(TARGET fsc-examples PROPERTY CXX_STANDARD 20)	 # C++ language to use
+#    target_link_libraries(fsc-examples PRIVATE FSC)
+#endif()
+
+if(FSC_BUILD_BENCHMARK)
+    add_executable(fsc-benchmark "benchmark_md4.cpp")
+    set_property(TARGET fsc-benchmark PROPERTY CXX_STANDARD 20)	 # C++ language to use
+
+    FetchContent_Declare(benchmark URL https://github.com/google/benchmark/archive/refs/tags/v1.8.3.zip)
+    set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(benchmark)
+    target_link_libraries(fsc-benchmark PRIVATE FSC benchmark::benchmark benchmark::benchmark_main)
 endif()
