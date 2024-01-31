@@ -10,6 +10,7 @@
 
 #include "fsc.cpp"
 #include <wy.hpp>
+#include <bit>
 
 /////////////////////////////////////////////////////////////////////////////////
 /// General
@@ -22,13 +23,10 @@ TEST(general, Endianness)
 	memcpy(byteArray, &val, sizeof(byteArray));
 
 	for (size_t i = 0; i < 8; i++)
-	{
-#if FSC_HASH_LITTLE_ENDIAN
-		ASSERT_EQ(byteArray[i], (val >> i * 8) & 0xff);
-#else
-		ASSERT_EQ(byteArray[7 - i], (val >> i * 8) & 0xff);
-#endif
-	}
+		if constexpr (std::endian::native == std::endian::little)
+			ASSERT_EQ(byteArray[i], (val >> i * 8) & 0xff);
+		else
+			ASSERT_EQ(byteArray[7 - i], (val >> i * 8) & 0xff);
 }
 TEST(general, Byteswap)
 {

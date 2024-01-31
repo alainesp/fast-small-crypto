@@ -30,12 +30,3 @@
 		return (((v >> 24) & 0xff) | ((v >> 8) & 0xff00) | ((v << 8) & 0xff0000) | ((v << 24) & 0xff000000));
 	}
 #endif
-
-#if defined(_WIN32) || defined(__LITTLE_ENDIAN__) || (defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
-	#define FSC_HASH_LITTLE_ENDIAN 1
-#elif defined(__BIG_ENDIAN__) || (defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
-	#define FSC_HASH_LITTLE_ENDIAN 0
-#else
-	#warning could not determine endianness!Falling back to little endian.
-	#define FSC_HASH_LITTLE_ENDIAN 1
-#endif
