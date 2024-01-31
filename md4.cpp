@@ -7,6 +7,11 @@
 #include "simd.hpp"
 using namespace simd;
 
+#ifdef __clang__
+#include <bit>
+#define _rotl std::rotl
+#endif
+
 //// <summary>
 //// MD4 compress block
 //// </summary>
@@ -62,10 +67,10 @@ extern "C" void md4_block_plain_c(uint32_t state[4], const uint32_t block[16]) n
 	b += block[15];	b += 1859775393;	b += (t ^ c);	b = _rotl(b, 15);
 
 	// Save state
-	state[0] = (state[0] + a);
-	state[1] = (state[1] + b);
-	state[2] = (state[2] + c);
-	state[3] = (state[3] + d);
+	state[0] += a;
+	state[1] += b;
+	state[2] += c;
+	state[3] += d;
 }
 
 extern "C" void md4_block_sse2_x1(simd::Vec128u32 state[4], const simd::Vec128u32 block[16]) noexcept

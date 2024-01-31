@@ -41,7 +41,7 @@ else()
         target_compile_options(FSC PRIVATE /W4 /WX)
         target_link_options(FSC PRIVATE /W4 /WX)
     else()
-        target_compile_options(FSC PRIVATE -Wall -Wextra -pedantic -Werror -Wl,--fatal-warnings)
+        target_compile_options(FSC PRIVATE -Wall -Wextra -pedantic -Werror -Wl,--fatal-warnings   -Wno-ignored-attributes -Wno-psabi)
     endif()
 endif()
 
