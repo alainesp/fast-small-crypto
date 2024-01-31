@@ -154,19 +154,23 @@ TEST(md4, plain_c)
 		std::copy(random_values.cbegin() + 4, random_values.cend(), message1);
 
 		md4_transform(state0, message0);
-		md4_block_PLAIN_C(state1, message1);
+		md4_block_plain_c(state1, message1);
 
 		ASSERT_EQ(0, memcmp(state0, state1, sizeof(state0)));
 	}
 }
-TEST(md4, avx2)
+
+// SSE2
+TEST(md4, md4_block_SSE2_x1)
 {
-	constexpr size_t parallelism = 3 * sizeof(__m256i) / sizeof(uint32_t);
+	constexpr size_t parallel_factor = 1;
+	constexpr size_t parallelism = parallel_factor * sizeof(simd::Vec128u32) / sizeof(uint32_t);
+
 	uint32_t state0[4 * parallelism];
 	uint32_t message0[16 * parallelism];
 
-	__m256i state1[4 * 3];
-	__m256i message1[16 * 3];
+	simd::Vec128u32 state1[4 * parallel_factor];
+	simd::Vec128u32 message1[16 * parallel_factor];
 
 	ASSERT_EQ(sizeof(state0), sizeof(state1));
 	ASSERT_EQ(sizeof(message0), sizeof(message1));
@@ -188,25 +192,600 @@ TEST(md4, avx2)
 			reinterpret_cast<uint32_t*>(message1)[j / 16 + (j & 15) * parallelism] = message0[j];
 
 		// Hash
-		for (size_t j = 0; j < std::size(state0) / 4; j++)
+		for (size_t j = 0; j < parallelism; j++)
 			md4_transform(state0 + j * 4, message0 + j * 16);
-		md4_block_AVX2_INTRINSICS(state1, message1);
+		md4_block_sse2_x1(state1, message1);
+		// Compare results
+		for (size_t j = 0; j < std::size(state0); j++)
+			ASSERT_EQ(reinterpret_cast<uint32_t*>(state1)[j / 4 + (j & 3) * parallelism], state0[j]);
+	}
+}
+TEST(md4, md4_block_SSE2_x2)
+{
+	constexpr size_t parallel_factor = 2;
+	constexpr size_t parallelism = parallel_factor * sizeof(simd::Vec128u32) / sizeof(uint32_t);
 
+	uint32_t state0[4 * parallelism];
+	uint32_t message0[16 * parallelism];
+
+	simd::Vec128u32 state1[4 * parallel_factor];
+	simd::Vec128u32 message1[16 * parallel_factor];
+
+	ASSERT_EQ(sizeof(state0), sizeof(state1));
+	ASSERT_EQ(sizeof(message0), sizeof(message1));
+
+	// Create a pseudo-random generator
+	wy::rand r;
+	std::vector<uint32_t> random_values;
+
+	for (size_t i = 0; i < 64; i++)
+	{
+		r.generate_stream(random_values, std::size(state0) + std::size(message0));
+		std::copy(random_values.cbegin(), random_values.cbegin() + std::size(state0), state0);
+		std::copy(random_values.cbegin() + std::size(state0), random_values.cend(), message0);
+
+		// Copy values to simd
+		for (size_t j = 0; j < std::size(state0); j++)
+			reinterpret_cast<uint32_t*>(state1)[j / 4 + (j & 3) * parallelism] = state0[j];
+		for (size_t j = 0; j < std::size(message0); j++)
+			reinterpret_cast<uint32_t*>(message1)[j / 16 + (j & 15) * parallelism] = message0[j];
+
+		// Hash
+		for (size_t j = 0; j < parallelism; j++)
+			md4_transform(state0 + j * 4, message0 + j * 16);
+		md4_block_sse2_x2(state1, message1);
+		// Compare results
+		for (size_t j = 0; j < std::size(state0); j++)
+			ASSERT_EQ(reinterpret_cast<uint32_t*>(state1)[j / 4 + (j & 3) * parallelism], state0[j]);
+	}
+}
+TEST(md4, md4_block_SSE2_x3)
+{
+	constexpr size_t parallel_factor = 3;
+	constexpr size_t parallelism = parallel_factor * sizeof(simd::Vec128u32) / sizeof(uint32_t);
+
+	uint32_t state0[4 * parallelism];
+	uint32_t message0[16 * parallelism];
+
+	simd::Vec128u32 state1[4 * parallel_factor];
+	simd::Vec128u32 message1[16 * parallel_factor];
+
+	ASSERT_EQ(sizeof(state0), sizeof(state1));
+	ASSERT_EQ(sizeof(message0), sizeof(message1));
+
+	// Create a pseudo-random generator
+	wy::rand r;
+	std::vector<uint32_t> random_values;
+
+	for (size_t i = 0; i < 64; i++)
+	{
+		r.generate_stream(random_values, std::size(state0) + std::size(message0));
+		std::copy(random_values.cbegin(), random_values.cbegin() + std::size(state0), state0);
+		std::copy(random_values.cbegin() + std::size(state0), random_values.cend(), message0);
+
+		// Copy values to simd
+		for (size_t j = 0; j < std::size(state0); j++)
+			reinterpret_cast<uint32_t*>(state1)[j / 4 + (j & 3) * parallelism] = state0[j];
+		for (size_t j = 0; j < std::size(message0); j++)
+			reinterpret_cast<uint32_t*>(message1)[j / 16 + (j & 15) * parallelism] = message0[j];
+
+		// Hash
+		for (size_t j = 0; j < parallelism; j++)
+			md4_transform(state0 + j * 4, message0 + j * 16);
+		md4_block_sse2_x3(state1, message1);
+		// Compare results
+		for (size_t j = 0; j < std::size(state0); j++)
+			ASSERT_EQ(reinterpret_cast<uint32_t*>(state1)[j / 4 + (j & 3) * parallelism], state0[j]);
+	}
+}
+TEST(md4, md4_block_SSE2_x4)
+{
+	constexpr size_t parallel_factor = 4;
+	constexpr size_t parallelism = parallel_factor * sizeof(simd::Vec128u32) / sizeof(uint32_t);
+
+	uint32_t state0[4 * parallelism];
+	uint32_t message0[16 * parallelism];
+
+	simd::Vec128u32 state1[4 * parallel_factor];
+	simd::Vec128u32 message1[16 * parallel_factor];
+
+	ASSERT_EQ(sizeof(state0), sizeof(state1));
+	ASSERT_EQ(sizeof(message0), sizeof(message1));
+
+	// Create a pseudo-random generator
+	wy::rand r;
+	std::vector<uint32_t> random_values;
+
+	for (size_t i = 0; i < 64; i++)
+	{
+		r.generate_stream(random_values, std::size(state0) + std::size(message0));
+		std::copy(random_values.cbegin(), random_values.cbegin() + std::size(state0), state0);
+		std::copy(random_values.cbegin() + std::size(state0), random_values.cend(), message0);
+
+		// Copy values to simd
+		for (size_t j = 0; j < std::size(state0); j++)
+			reinterpret_cast<uint32_t*>(state1)[j / 4 + (j & 3) * parallelism] = state0[j];
+		for (size_t j = 0; j < std::size(message0); j++)
+			reinterpret_cast<uint32_t*>(message1)[j / 16 + (j & 15) * parallelism] = message0[j];
+
+		// Hash
+		for (size_t j = 0; j < parallelism; j++)
+			md4_transform(state0 + j * 4, message0 + j * 16);
+		md4_block_sse2_x4(state1, message1);
+		// Compare results
+		for (size_t j = 0; j < std::size(state0); j++)
+			ASSERT_EQ(reinterpret_cast<uint32_t*>(state1)[j / 4 + (j & 3) * parallelism], state0[j]);
+	}
+}
+// AVX
+TEST(md4, md4_block_AVX_x1)
+{
+	constexpr size_t parallel_factor = 1;
+	constexpr size_t parallelism = parallel_factor * sizeof(simd::Vec128u32) / sizeof(uint32_t);
+
+	uint32_t state0[4 * parallelism];
+	uint32_t message0[16 * parallelism];
+
+	simd::Vec128u32 state1[4 * parallel_factor];
+	simd::Vec128u32 message1[16 * parallel_factor];
+
+	ASSERT_EQ(sizeof(state0), sizeof(state1));
+	ASSERT_EQ(sizeof(message0), sizeof(message1));
+
+	// Create a pseudo-random generator
+	wy::rand r;
+	std::vector<uint32_t> random_values;
+
+	for (size_t i = 0; i < 64; i++)
+	{
+		r.generate_stream(random_values, std::size(state0) + std::size(message0));
+		std::copy(random_values.cbegin(), random_values.cbegin() + std::size(state0), state0);
+		std::copy(random_values.cbegin() + std::size(state0), random_values.cend(), message0);
+
+		// Copy values to simd
+		for (size_t j = 0; j < std::size(state0); j++)
+			reinterpret_cast<uint32_t*>(state1)[j / 4 + (j & 3) * parallelism] = state0[j];
+		for (size_t j = 0; j < std::size(message0); j++)
+			reinterpret_cast<uint32_t*>(message1)[j / 16 + (j & 15) * parallelism] = message0[j];
+
+		// Hash
+		for (size_t j = 0; j < parallelism; j++)
+			md4_transform(state0 + j * 4, message0 + j * 16);
+		md4_block_avx_x1(state1, message1);
+		// Compare results
+		for (size_t j = 0; j < std::size(state0); j++)
+			ASSERT_EQ(reinterpret_cast<uint32_t*>(state1)[j / 4 + (j & 3) * parallelism], state0[j]);
+	}
+}
+TEST(md4, md4_block_AVX_x2)
+{
+	constexpr size_t parallel_factor = 2;
+	constexpr size_t parallelism = parallel_factor * sizeof(simd::Vec128u32) / sizeof(uint32_t);
+
+	uint32_t state0[4 * parallelism];
+	uint32_t message0[16 * parallelism];
+
+	simd::Vec128u32 state1[4 * parallel_factor];
+	simd::Vec128u32 message1[16 * parallel_factor];
+
+	ASSERT_EQ(sizeof(state0), sizeof(state1));
+	ASSERT_EQ(sizeof(message0), sizeof(message1));
+
+	// Create a pseudo-random generator
+	wy::rand r;
+	std::vector<uint32_t> random_values;
+
+	for (size_t i = 0; i < 64; i++)
+	{
+		r.generate_stream(random_values, std::size(state0) + std::size(message0));
+		std::copy(random_values.cbegin(), random_values.cbegin() + std::size(state0), state0);
+		std::copy(random_values.cbegin() + std::size(state0), random_values.cend(), message0);
+
+		// Copy values to simd
+		for (size_t j = 0; j < std::size(state0); j++)
+			reinterpret_cast<uint32_t*>(state1)[j / 4 + (j & 3) * parallelism] = state0[j];
+		for (size_t j = 0; j < std::size(message0); j++)
+			reinterpret_cast<uint32_t*>(message1)[j / 16 + (j & 15) * parallelism] = message0[j];
+
+		// Hash
+		for (size_t j = 0; j < parallelism; j++)
+			md4_transform(state0 + j * 4, message0 + j * 16);
+		md4_block_avx_x2(state1, message1);
+		// Compare results
+		for (size_t j = 0; j < std::size(state0); j++)
+			ASSERT_EQ(reinterpret_cast<uint32_t*>(state1)[j / 4 + (j & 3) * parallelism], state0[j]);
+	}
+}
+TEST(md4, md4_block_AVX_x3)
+{
+	constexpr size_t parallel_factor = 3;
+	constexpr size_t parallelism = parallel_factor * sizeof(simd::Vec128u32) / sizeof(uint32_t);
+
+	uint32_t state0[4 * parallelism];
+	uint32_t message0[16 * parallelism];
+
+	simd::Vec128u32 state1[4 * parallel_factor];
+	simd::Vec128u32 message1[16 * parallel_factor];
+
+	ASSERT_EQ(sizeof(state0), sizeof(state1));
+	ASSERT_EQ(sizeof(message0), sizeof(message1));
+
+	// Create a pseudo-random generator
+	wy::rand r;
+	std::vector<uint32_t> random_values;
+
+	for (size_t i = 0; i < 64; i++)
+	{
+		r.generate_stream(random_values, std::size(state0) + std::size(message0));
+		std::copy(random_values.cbegin(), random_values.cbegin() + std::size(state0), state0);
+		std::copy(random_values.cbegin() + std::size(state0), random_values.cend(), message0);
+
+		// Copy values to simd
+		for (size_t j = 0; j < std::size(state0); j++)
+			reinterpret_cast<uint32_t*>(state1)[j / 4 + (j & 3) * parallelism] = state0[j];
+		for (size_t j = 0; j < std::size(message0); j++)
+			reinterpret_cast<uint32_t*>(message1)[j / 16 + (j & 15) * parallelism] = message0[j];
+
+		// Hash
+		for (size_t j = 0; j < parallelism; j++)
+			md4_transform(state0 + j * 4, message0 + j * 16);
+		md4_block_avx_x3(state1, message1);
+		// Compare results
+		for (size_t j = 0; j < std::size(state0); j++)
+			ASSERT_EQ(reinterpret_cast<uint32_t*>(state1)[j / 4 + (j & 3) * parallelism], state0[j]);
+	}
+}
+TEST(md4, md4_block_AVX_x4)
+{
+	constexpr size_t parallel_factor = 4;
+	constexpr size_t parallelism = parallel_factor * sizeof(simd::Vec128u32) / sizeof(uint32_t);
+
+	uint32_t state0[4 * parallelism];
+	uint32_t message0[16 * parallelism];
+
+	simd::Vec128u32 state1[4 * parallel_factor];
+	simd::Vec128u32 message1[16 * parallel_factor];
+
+	ASSERT_EQ(sizeof(state0), sizeof(state1));
+	ASSERT_EQ(sizeof(message0), sizeof(message1));
+
+	// Create a pseudo-random generator
+	wy::rand r;
+	std::vector<uint32_t> random_values;
+
+	for (size_t i = 0; i < 64; i++)
+	{
+		r.generate_stream(random_values, std::size(state0) + std::size(message0));
+		std::copy(random_values.cbegin(), random_values.cbegin() + std::size(state0), state0);
+		std::copy(random_values.cbegin() + std::size(state0), random_values.cend(), message0);
+
+		// Copy values to simd
+		for (size_t j = 0; j < std::size(state0); j++)
+			reinterpret_cast<uint32_t*>(state1)[j / 4 + (j & 3) * parallelism] = state0[j];
+		for (size_t j = 0; j < std::size(message0); j++)
+			reinterpret_cast<uint32_t*>(message1)[j / 16 + (j & 15) * parallelism] = message0[j];
+
+		// Hash
+		for (size_t j = 0; j < parallelism; j++)
+			md4_transform(state0 + j * 4, message0 + j * 16);
+		md4_block_avx_x4(state1, message1);
+		// Compare results
+		for (size_t j = 0; j < std::size(state0); j++)
+			ASSERT_EQ(reinterpret_cast<uint32_t*>(state1)[j / 4 + (j & 3) * parallelism], state0[j]);
+	}
+}
+// AVX2
+TEST(md4, md4_block_AVX2_x1)
+{
+	constexpr size_t parallel_factor = 1;
+	constexpr size_t parallelism = parallel_factor * sizeof(simd::Vec256u32) / sizeof(uint32_t);
+
+	uint32_t state0[4 * parallelism];
+	uint32_t message0[16 * parallelism];
+
+	simd::Vec256u32 state1[4 * parallel_factor];
+	simd::Vec256u32 message1[16 * parallel_factor];
+
+	ASSERT_EQ(sizeof(state0), sizeof(state1));
+	ASSERT_EQ(sizeof(message0), sizeof(message1));
+
+	// Create a pseudo-random generator
+	wy::rand r;
+	std::vector<uint32_t> random_values;
+
+	for (size_t i = 0; i < 64; i++)
+	{
+		r.generate_stream(random_values, std::size(state0) + std::size(message0));
+		std::copy(random_values.cbegin(), random_values.cbegin() + std::size(state0), state0);
+		std::copy(random_values.cbegin() + std::size(state0), random_values.cend(), message0);
+
+		// Copy values to simd
+		for (size_t j = 0; j < std::size(state0); j++)
+			reinterpret_cast<uint32_t*>(state1)[j / 4 + (j & 3) * parallelism] = state0[j];
+		for (size_t j = 0; j < std::size(message0); j++)
+			reinterpret_cast<uint32_t*>(message1)[j / 16 + (j & 15) * parallelism] = message0[j];
+
+		// Hash
+		for (size_t j = 0; j < parallelism; j++)
+			md4_transform(state0 + j * 4, message0 + j * 16);
+		md4_block_avx2_x1(state1, message1);
+		// Compare results
+		for (size_t j = 0; j < std::size(state0); j++)
+			ASSERT_EQ(reinterpret_cast<uint32_t*>(state1)[j / 4 + (j & 3) * parallelism], state0[j]);
+	}
+}
+TEST(md4, md4_block_AVX2_x2)
+{
+	constexpr size_t parallel_factor = 2;
+	constexpr size_t parallelism = parallel_factor * sizeof(simd::Vec256u32) / sizeof(uint32_t);
+
+	uint32_t state0[4 * parallelism];
+	uint32_t message0[16 * parallelism];
+
+	simd::Vec256u32 state1[4 * parallel_factor];
+	simd::Vec256u32 message1[16 * parallel_factor];
+
+	ASSERT_EQ(sizeof(state0), sizeof(state1));
+	ASSERT_EQ(sizeof(message0), sizeof(message1));
+
+	// Create a pseudo-random generator
+	wy::rand r;
+	std::vector<uint32_t> random_values;
+
+	for (size_t i = 0; i < 64; i++)
+	{
+		r.generate_stream(random_values, std::size(state0) + std::size(message0));
+		std::copy(random_values.cbegin(), random_values.cbegin() + std::size(state0), state0);
+		std::copy(random_values.cbegin() + std::size(state0), random_values.cend(), message0);
+
+		// Copy values to simd
+		for (size_t j = 0; j < std::size(state0); j++)
+			reinterpret_cast<uint32_t*>(state1)[j / 4 + (j & 3) * parallelism] = state0[j];
+		for (size_t j = 0; j < std::size(message0); j++)
+			reinterpret_cast<uint32_t*>(message1)[j / 16 + (j & 15) * parallelism] = message0[j];
+
+		// Hash
+		for (size_t j = 0; j < parallelism; j++)
+			md4_transform(state0 + j * 4, message0 + j * 16);
+		md4_block_avx2_x2(state1, message1);
+		// Compare results
+		for (size_t j = 0; j < std::size(state0); j++)
+			ASSERT_EQ(reinterpret_cast<uint32_t*>(state1)[j / 4 + (j & 3) * parallelism], state0[j]);
+	}
+}
+TEST(md4, md4_block_AVX2_x3)
+{
+	constexpr size_t parallel_factor = 3;
+	constexpr size_t parallelism = parallel_factor * sizeof(simd::Vec256u32) / sizeof(uint32_t);
+
+	uint32_t state0[4 * parallelism];
+	uint32_t message0[16 * parallelism];
+
+	simd::Vec256u32 state1[4 * parallel_factor];
+	simd::Vec256u32 message1[16 * parallel_factor];
+
+	ASSERT_EQ(sizeof(state0), sizeof(state1));
+	ASSERT_EQ(sizeof(message0), sizeof(message1));
+
+	// Create a pseudo-random generator
+	wy::rand r;
+	std::vector<uint32_t> random_values;
+
+	for (size_t i = 0; i < 64; i++)
+	{
+		r.generate_stream(random_values, std::size(state0) + std::size(message0));
+		std::copy(random_values.cbegin(), random_values.cbegin() + std::size(state0), state0);
+		std::copy(random_values.cbegin() + std::size(state0), random_values.cend(), message0);
+
+		// Copy values to simd
+		for (size_t j = 0; j < std::size(state0); j++)
+			reinterpret_cast<uint32_t*>(state1)[j / 4 + (j & 3) * parallelism] = state0[j];
+		for (size_t j = 0; j < std::size(message0); j++)
+			reinterpret_cast<uint32_t*>(message1)[j / 16 + (j & 15) * parallelism] = message0[j];
+
+		// Hash
+		for (size_t j = 0; j < parallelism; j++)
+			md4_transform(state0 + j * 4, message0 + j * 16);
+		md4_block_avx2_x3(state1, message1);
+		// Compare results
+		for (size_t j = 0; j < std::size(state0); j++)
+			ASSERT_EQ(reinterpret_cast<uint32_t*>(state1)[j / 4 + (j & 3) * parallelism], state0[j]);
+	}
+}
+TEST(md4, md4_block_AVX2_x4)
+{
+	constexpr size_t parallel_factor = 4;
+	constexpr size_t parallelism = parallel_factor * sizeof(simd::Vec256u32) / sizeof(uint32_t);
+
+	uint32_t state0[4 * parallelism];
+	uint32_t message0[16 * parallelism];
+
+	simd::Vec256u32 state1[4 * parallel_factor];
+	simd::Vec256u32 message1[16 * parallel_factor];
+
+	ASSERT_EQ(sizeof(state0), sizeof(state1));
+	ASSERT_EQ(sizeof(message0), sizeof(message1));
+
+	// Create a pseudo-random generator
+	wy::rand r;
+	std::vector<uint32_t> random_values;
+
+	for (size_t i = 0; i < 64; i++)
+	{
+		r.generate_stream(random_values, std::size(state0) + std::size(message0));
+		std::copy(random_values.cbegin(), random_values.cbegin() + std::size(state0), state0);
+		std::copy(random_values.cbegin() + std::size(state0), random_values.cend(), message0);
+
+		// Copy values to simd
+		for (size_t j = 0; j < std::size(state0); j++)
+			reinterpret_cast<uint32_t*>(state1)[j / 4 + (j & 3) * parallelism] = state0[j];
+		for (size_t j = 0; j < std::size(message0); j++)
+			reinterpret_cast<uint32_t*>(message1)[j / 16 + (j & 15) * parallelism] = message0[j];
+
+		// Hash
+		for (size_t j = 0; j < parallelism; j++)
+			md4_transform(state0 + j * 4, message0 + j * 16);
+		md4_block_avx2_x4(state1, message1);
+		// Compare results
+		for (size_t j = 0; j < std::size(state0); j++)
+			ASSERT_EQ(reinterpret_cast<uint32_t*>(state1)[j / 4 + (j & 3) * parallelism], state0[j]);
+	}
+}
+// AVX512
+TEST(md4, md4_block_AVX512_x1)
+{
+	constexpr size_t parallel_factor = 1;
+	constexpr size_t parallelism = parallel_factor * sizeof(simd::Vec512u32) / sizeof(uint32_t);
+
+	uint32_t state0[4 * parallelism];
+	uint32_t message0[16 * parallelism];
+
+	simd::Vec512u32 state1[4 * parallel_factor];
+	simd::Vec512u32 message1[16 * parallel_factor];
+
+	ASSERT_EQ(sizeof(state0), sizeof(state1));
+	ASSERT_EQ(sizeof(message0), sizeof(message1));
+
+	// Create a pseudo-random generator
+	wy::rand r;
+	std::vector<uint32_t> random_values;
+
+	for (size_t i = 0; i < 64; i++)
+	{
+		r.generate_stream(random_values, std::size(state0) + std::size(message0));
+		std::copy(random_values.cbegin(), random_values.cbegin() + std::size(state0), state0);
+		std::copy(random_values.cbegin() + std::size(state0), random_values.cend(), message0);
+
+		// Copy values to simd
+		for (size_t j = 0; j < std::size(state0); j++)
+			reinterpret_cast<uint32_t*>(state1)[j / 4 + (j & 3) * parallelism] = state0[j];
+		for (size_t j = 0; j < std::size(message0); j++)
+			reinterpret_cast<uint32_t*>(message1)[j / 16 + (j & 15) * parallelism] = message0[j];
+
+		// Hash
+		for (size_t j = 0; j < parallelism; j++)
+			md4_transform(state0 + j * 4, message0 + j * 16);
+		md4_block_avx512_x1(state1, message1);
+		// Compare results
+		for (size_t j = 0; j < std::size(state0); j++)
+			ASSERT_EQ(reinterpret_cast<uint32_t*>(state1)[j / 4 + (j & 3) * parallelism], state0[j]);
+	}
+}
+TEST(md4, md4_block_AVX512_x2)
+{
+	constexpr size_t parallel_factor = 2;
+	constexpr size_t parallelism = parallel_factor * sizeof(simd::Vec512u32) / sizeof(uint32_t);
+
+	uint32_t state0[4 * parallelism];
+	uint32_t message0[16 * parallelism];
+
+	simd::Vec512u32 state1[4 * parallel_factor];
+	simd::Vec512u32 message1[16 * parallel_factor];
+
+	ASSERT_EQ(sizeof(state0), sizeof(state1));
+	ASSERT_EQ(sizeof(message0), sizeof(message1));
+
+	// Create a pseudo-random generator
+	wy::rand r;
+	std::vector<uint32_t> random_values;
+
+	for (size_t i = 0; i < 64; i++)
+	{
+		r.generate_stream(random_values, std::size(state0) + std::size(message0));
+		std::copy(random_values.cbegin(), random_values.cbegin() + std::size(state0), state0);
+		std::copy(random_values.cbegin() + std::size(state0), random_values.cend(), message0);
+
+		// Copy values to simd
+		for (size_t j = 0; j < std::size(state0); j++)
+			reinterpret_cast<uint32_t*>(state1)[j / 4 + (j & 3) * parallelism] = state0[j];
+		for (size_t j = 0; j < std::size(message0); j++)
+			reinterpret_cast<uint32_t*>(message1)[j / 16 + (j & 15) * parallelism] = message0[j];
+
+		// Hash
+		for (size_t j = 0; j < parallelism; j++)
+			md4_transform(state0 + j * 4, message0 + j * 16);
+		md4_block_avx512_x2(state1, message1);
+		// Compare results
+		for (size_t j = 0; j < std::size(state0); j++)
+			ASSERT_EQ(reinterpret_cast<uint32_t*>(state1)[j / 4 + (j & 3) * parallelism], state0[j]);
+	}
+}
+TEST(md4, md4_block_AVX512_x3)
+{
+	constexpr size_t parallel_factor = 3;
+	constexpr size_t parallelism = parallel_factor * sizeof(simd::Vec512u32) / sizeof(uint32_t);
+
+	uint32_t state0[4 * parallelism];
+	uint32_t message0[16 * parallelism];
+
+	simd::Vec512u32 state1[4 * parallel_factor];
+	simd::Vec512u32 message1[16 * parallel_factor];
+
+	ASSERT_EQ(sizeof(state0), sizeof(state1));
+	ASSERT_EQ(sizeof(message0), sizeof(message1));
+
+	// Create a pseudo-random generator
+	wy::rand r;
+	std::vector<uint32_t> random_values;
+
+	for (size_t i = 0; i < 64; i++)
+	{
+		r.generate_stream(random_values, std::size(state0) + std::size(message0));
+		std::copy(random_values.cbegin(), random_values.cbegin() + std::size(state0), state0);
+		std::copy(random_values.cbegin() + std::size(state0), random_values.cend(), message0);
+
+		// Copy values to simd
+		for (size_t j = 0; j < std::size(state0); j++)
+			reinterpret_cast<uint32_t*>(state1)[j / 4 + (j & 3) * parallelism] = state0[j];
+		for (size_t j = 0; j < std::size(message0); j++)
+			reinterpret_cast<uint32_t*>(message1)[j / 16 + (j & 15) * parallelism] = message0[j];
+
+		// Hash
+		for (size_t j = 0; j < parallelism; j++)
+			md4_transform(state0 + j * 4, message0 + j * 16);
+		md4_block_avx512_x3(state1, message1);
+		// Compare results
+		for (size_t j = 0; j < std::size(state0); j++)
+			ASSERT_EQ(reinterpret_cast<uint32_t*>(state1)[j / 4 + (j & 3) * parallelism], state0[j]);
+	}
+}
+TEST(md4, md4_block_AVX512_x4)
+{
+	constexpr size_t parallel_factor = 4;
+	constexpr size_t parallelism = parallel_factor * sizeof(simd::Vec512u32) / sizeof(uint32_t);
+
+	uint32_t state0[4 * parallelism];
+	uint32_t message0[16 * parallelism];
+
+	simd::Vec512u32 state1[4 * parallel_factor];
+	simd::Vec512u32 message1[16 * parallel_factor];
+
+	ASSERT_EQ(sizeof(state0), sizeof(state1));
+	ASSERT_EQ(sizeof(message0), sizeof(message1));
+
+	// Create a pseudo-random generator
+	wy::rand r;
+	std::vector<uint32_t> random_values;
+
+	for (size_t i = 0; i < 64; i++)
+	{
+		r.generate_stream(random_values, std::size(state0) + std::size(message0));
+		std::copy(random_values.cbegin(), random_values.cbegin() + std::size(state0), state0);
+		std::copy(random_values.cbegin() + std::size(state0), random_values.cend(), message0);
+
+		// Copy values to simd
+		for (size_t j = 0; j < std::size(state0); j++)
+			reinterpret_cast<uint32_t*>(state1)[j / 4 + (j & 3) * parallelism] = state0[j];
+		for (size_t j = 0; j < std::size(message0); j++)
+			reinterpret_cast<uint32_t*>(message1)[j / 16 + (j & 15) * parallelism] = message0[j];
+
+		// Hash
+		for (size_t j = 0; j < parallelism; j++)
+			md4_transform(state0 + j * 4, message0 + j * 16);
+		md4_block_avx512_x4(state1, message1);
 		// Compare results
 		for (size_t j = 0; j < std::size(state0); j++)
 			ASSERT_EQ(reinterpret_cast<uint32_t*>(state1)[j / 4 + (j & 3) * parallelism], state0[j]);
 	}
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-/// Pseudo-random number generation
-/////////////////////////////////////////////////////////////////////////////////
-//TEST(wyrand, Constructors)
-//{
-//	wy::rand r0;
-//	ASSERT_NE(r0.state, 0);// This may occurr, with low probability, but checking for bad compilations
-//
-//	uint64_t seed = 0x4458adf548;
-//	wy::rand r1(seed);
-//	ASSERT_EQ(r1.state, seed);
-//}
