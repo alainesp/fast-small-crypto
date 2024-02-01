@@ -918,6 +918,11 @@ static SIMD_INLINE CpuFeatures operator|=(CpuFeatures& lhs, const CpuFeatures rh
 {
     return (lhs = static_cast<CpuFeatures>(static_cast<uint32_t>(lhs) | static_cast<uint32_t>(rhs)));
 }
+/// <summary>
+/// CPU features detection
+/// </summary>
+/// <returns></returns>
 CpuFeatures get_cpu_features() noexcept;
+static SIMD_INLINE bool cpu_supports(CpuFeatures feature) noexcept { return feature & simd::get_cpu_features(); }
 
 }

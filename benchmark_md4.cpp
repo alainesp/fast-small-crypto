@@ -14,7 +14,7 @@ static void BM_md4_block_PLAIN_C(benchmark::State& _benchmark_state) {
 BENCHMARK(BM_md4_block_PLAIN_C);
 
 static void BM_md4_block_SSE2_x1(benchmark::State& _benchmark_state) {
-	if (!(simd::CpuFeatures::SSE2 & simd::get_cpu_features()))
+	if (!simd::cpu_supports(simd::CpuFeatures::SSE2))
 		_benchmark_state.SkipWithMessage("No SSE2");
 
 	simd::Vec128u32 state[4];
@@ -29,7 +29,7 @@ static void BM_md4_block_SSE2_x1(benchmark::State& _benchmark_state) {
 BENCHMARK(BM_md4_block_SSE2_x1);
 
 static void BM_md4_block_SSE2_x2(benchmark::State& _benchmark_state) {
-	if (!(simd::CpuFeatures::SSE2 & simd::get_cpu_features()))
+	if (!simd::cpu_supports(simd::CpuFeatures::SSE2))
 		_benchmark_state.SkipWithMessage("No SSE2");
 
 	simd::Vec128u32 state[8];
@@ -44,7 +44,7 @@ static void BM_md4_block_SSE2_x2(benchmark::State& _benchmark_state) {
 BENCHMARK(BM_md4_block_SSE2_x2);
 
 static void BM_md4_block_SSE2_x3(benchmark::State& _benchmark_state) {
-	if (!(simd::CpuFeatures::SSE2 & simd::get_cpu_features()))
+	if (!simd::cpu_supports(simd::CpuFeatures::SSE2))
 		_benchmark_state.SkipWithMessage("No SSE2");
 
 	simd::Vec128u32 state[12];
@@ -59,7 +59,7 @@ static void BM_md4_block_SSE2_x3(benchmark::State& _benchmark_state) {
 BENCHMARK(BM_md4_block_SSE2_x3);
 
 static void BM_md4_block_SSE2_x4(benchmark::State& _benchmark_state) {
-	if (!(simd::CpuFeatures::SSE2 & simd::get_cpu_features()))
+	if (!simd::cpu_supports(simd::CpuFeatures::SSE2))
 		_benchmark_state.SkipWithMessage("No SSE2");
 
 	simd::Vec128u32 state[16];
@@ -74,7 +74,7 @@ static void BM_md4_block_SSE2_x4(benchmark::State& _benchmark_state) {
 BENCHMARK(BM_md4_block_SSE2_x4);
 
 static void BM_md4_block_AVX_x1(benchmark::State& _benchmark_state) {
-	if (!(simd::CpuFeatures::AVX & simd::get_cpu_features()))
+	if (!simd::cpu_supports(simd::CpuFeatures::AVX))
 		_benchmark_state.SkipWithMessage("No AVX");
 
 	simd::Vec128u32 state[4];
@@ -89,7 +89,7 @@ static void BM_md4_block_AVX_x1(benchmark::State& _benchmark_state) {
 BENCHMARK(BM_md4_block_AVX_x1);
 
 static void BM_md4_block_AVX_x2(benchmark::State& _benchmark_state) {
-	if (!(simd::CpuFeatures::AVX & simd::get_cpu_features()))
+	if (!simd::cpu_supports(simd::CpuFeatures::AVX))
 		_benchmark_state.SkipWithMessage("No AVX");
 
 	simd::Vec128u32 state[8];
@@ -104,7 +104,7 @@ static void BM_md4_block_AVX_x2(benchmark::State& _benchmark_state) {
 BENCHMARK(BM_md4_block_AVX_x2);
 
 static void BM_md4_block_AVX_x3(benchmark::State& _benchmark_state) {
-	if (!(simd::CpuFeatures::AVX & simd::get_cpu_features()))
+	if (!simd::cpu_supports(simd::CpuFeatures::AVX))
 		_benchmark_state.SkipWithMessage("No AVX");
 
 	simd::Vec128u32 state[12];
@@ -119,7 +119,7 @@ static void BM_md4_block_AVX_x3(benchmark::State& _benchmark_state) {
 BENCHMARK(BM_md4_block_AVX_x3);
 
 static void BM_md4_block_AVX_x4(benchmark::State& _benchmark_state) {
-	if (!(simd::CpuFeatures::AVX & simd::get_cpu_features()))
+	if (!simd::cpu_supports(simd::CpuFeatures::AVX))
 		_benchmark_state.SkipWithMessage("No AVX");
 
 	simd::Vec128u32 state[16];
@@ -134,7 +134,7 @@ static void BM_md4_block_AVX_x4(benchmark::State& _benchmark_state) {
 BENCHMARK(BM_md4_block_AVX_x4);
 
 static void BM_md4_block_AVX2_x1(benchmark::State& _benchmark_state) {
-	if (!(simd::CpuFeatures::AVX2 & simd::get_cpu_features()))
+	if (!simd::cpu_supports(simd::CpuFeatures::AVX2))
 		_benchmark_state.SkipWithMessage("No AVX2");
 
 	simd::Vec256u32 state[4];
@@ -149,7 +149,7 @@ static void BM_md4_block_AVX2_x1(benchmark::State& _benchmark_state) {
 BENCHMARK(BM_md4_block_AVX2_x1);
 
 static void BM_md4_block_AVX2_x2(benchmark::State& _benchmark_state) {
-	if (!(simd::CpuFeatures::AVX2 & simd::get_cpu_features()))
+	if (!simd::cpu_supports(simd::CpuFeatures::AVX2))
 		_benchmark_state.SkipWithMessage("No AVX2");
 
 	simd::Vec256u32 state[8];
@@ -164,7 +164,7 @@ static void BM_md4_block_AVX2_x2(benchmark::State& _benchmark_state) {
 BENCHMARK(BM_md4_block_AVX2_x2);
 
 static void BM_md4_block_AVX2_x3(benchmark::State& _benchmark_state) {
-	if (!(simd::CpuFeatures::AVX2 & simd::get_cpu_features()))
+	if (!simd::cpu_supports(simd::CpuFeatures::AVX2))
 		_benchmark_state.SkipWithMessage("No AVX2");
 
 	simd::Vec256u32 state[12];
@@ -179,7 +179,7 @@ static void BM_md4_block_AVX2_x3(benchmark::State& _benchmark_state) {
 BENCHMARK(BM_md4_block_AVX2_x3);
 
 static void BM_md4_block_AVX2_x4(benchmark::State& _benchmark_state) {
-	if (!(simd::CpuFeatures::AVX2 & simd::get_cpu_features()))
+	if (!simd::cpu_supports(simd::CpuFeatures::AVX2))
 		_benchmark_state.SkipWithMessage("No AVX2");
 
 	simd::Vec256u32 state[16];
@@ -194,7 +194,7 @@ static void BM_md4_block_AVX2_x4(benchmark::State& _benchmark_state) {
 BENCHMARK(BM_md4_block_AVX2_x4);
 
 static void BM_md4_block_AVX512_x1(benchmark::State& _benchmark_state) {
-	if (!(simd::CpuFeatures::AVX512F & simd::get_cpu_features()))
+	if (!simd::cpu_supports(simd::CpuFeatures::AVX512))
 		_benchmark_state.SkipWithMessage("No AVX512F");
 
 	simd::Vec512u32 state[4];
@@ -209,7 +209,7 @@ static void BM_md4_block_AVX512_x1(benchmark::State& _benchmark_state) {
 BENCHMARK(BM_md4_block_AVX512_x1);
 
 static void BM_md4_block_AVX512_x2(benchmark::State& _benchmark_state) {
-	if (!(simd::CpuFeatures::AVX512F & simd::get_cpu_features()))
+	if (!simd::cpu_supports(simd::CpuFeatures::AVX512))
 		_benchmark_state.SkipWithMessage("No AVX512F");
 
 	simd::Vec512u32 state[8];
@@ -224,7 +224,7 @@ static void BM_md4_block_AVX512_x2(benchmark::State& _benchmark_state) {
 BENCHMARK(BM_md4_block_AVX512_x2);
 
 static void BM_md4_block_AVX512_x3(benchmark::State& _benchmark_state) {
-	if (!(simd::CpuFeatures::AVX512F & simd::get_cpu_features()))
+	if (!simd::cpu_supports(simd::CpuFeatures::AVX512))
 		_benchmark_state.SkipWithMessage("No AVX512F");
 
 	simd::Vec512u32 state[12];
@@ -239,7 +239,7 @@ static void BM_md4_block_AVX512_x3(benchmark::State& _benchmark_state) {
 BENCHMARK(BM_md4_block_AVX512_x3);
 
 static void BM_md4_block_AVX512_x4(benchmark::State& _benchmark_state) {
-	if (!(simd::CpuFeatures::AVX512F & simd::get_cpu_features()))
+	if (!simd::cpu_supports(simd::CpuFeatures::AVX512))
 		_benchmark_state.SkipWithMessage("No AVX512F");
 
 	simd::Vec512u32 state[16];
