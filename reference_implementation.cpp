@@ -6,12 +6,14 @@
 
 #include <stdint.h>
 
-#define ROTATE32(x,shift)	_rotl(x,shift)
-#define ROTATE64(x,shift)	_rotl64(x,shift)
+#ifndef _MSC_VER
+#include <bit>
+#define _rotl std::rotl
+#endif
 
-#define ROUND1(a,b,c,d,k,s) (a = ROTATE32(a + (d ^ (b & (c ^ d))) + k, s))
-#define ROUND2(a,b,c,d,k,s) (a = ROTATE32(a + ((b & c) ^ (d & (b ^ c))) + k + 0x5A827999, s))
-#define ROUND3(a,b,c,d,k,s) (a = ROTATE32(a + (b ^ c ^ d) + k + 0x6ED9EBA1, s))
+#define ROUND1(a,b,c,d,k,s) (a = _rotl(a + (d ^ (b & (c ^ d))) + k, s))
+#define ROUND2(a,b,c,d,k,s) (a = _rotl(a + ((b & c) ^ (d & (b ^ c))) + k + 0x5A827999, s))
+#define ROUND3(a,b,c,d,k,s) (a = _rotl(a + (b ^ c ^ d) + k + 0x6ED9EBA1, s))
 
 static void md4_transform(uint32_t state[4], const uint32_t in[16])
 {
