@@ -157,6 +157,10 @@ using Vec128f64 = float64x2_t;
 // x86 SSE2
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #ifndef _MSC_VER
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wignored-attributes" // Ignore SIMD attributes on template param
+
 template <class RAW> struct BaseVector
 {
     BaseVector() noexcept = default;
@@ -254,6 +258,9 @@ using Vec512i64 = BaseVector<__m512i>;
 using Vec512Int = BaseVector<__m512i>;
 using Vec512f32 = BaseVector<__m512 >;
 using Vec512f64 = BaseVector<__m512d>;
+
+#pragma GCC diagnostic pop
+
 #endif
 #endif
 
