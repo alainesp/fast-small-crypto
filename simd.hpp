@@ -160,6 +160,7 @@ using Vec128f64 = float64x2_t;
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wignored-attributes" // Ignore SIMD attributes on template param
+#pragma GCC diagnostic ignored "-Wpsabi" // Ignore SIMD attributes on template param
 
 template <class RAW> struct BaseVector
 {
