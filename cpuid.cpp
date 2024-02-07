@@ -81,7 +81,6 @@ static CpuFeatures cpu_feature_flag_x86() noexcept {
 	uint32_t xcr0 = 0;
 	if (has_osxsave)
 		xcr0 = ReadXCR0();
-	const bool xsave_xmm = (xcr0 & 2);          // is_bit_set(xcr0, 1)
 	const bool xsave_ymm = (xcr0 & 6) == 6;     // is_bit_set(xcr0, 2)
 	const bool xsave_zmm = (xcr0 & 230) == 230; // is_bit_set(xcr0, 5) && is_bit_set(xcr0, 6) && is_bit_set(xcr0, 7)
 
@@ -94,6 +93,7 @@ static CpuFeatures cpu_feature_flag_x86() noexcept {
 	flags |=  is_bit_set(abcd[2], 20)               ? CpuFeatures::SSE42 : CpuFeatures::NONE;
 	flags |=  is_bit_set(abcd[2], 25)               ? CpuFeatures::AES   : CpuFeatures::NONE;
 #else
+	const bool xsave_xmm = (xcr0 & 2);          // is_bit_set(xcr0, 1)
 	flags |= (is_bit_set(abcd[3], 25) && xsave_xmm) ? CpuFeatures::SSE   : CpuFeatures::NONE;
 	flags |= (is_bit_set(abcd[3], 26) && xsave_xmm) ? CpuFeatures::SSE2  : CpuFeatures::NONE;
 	flags |= (is_bit_set(abcd[2],  0) && xsave_xmm) ? CpuFeatures::SSE3  : CpuFeatures::NONE;

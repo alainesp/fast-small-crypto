@@ -9,6 +9,9 @@
 #include <cstddef>
 #include <cstdint>
 #include <type_traits>
+#if __cplusplus >= 202002L
+#include <bit>
+#endif
 
 #ifndef SimdScalarType
 #define SimdScalarType uint32_t
@@ -156,7 +159,7 @@ using Vec128f64 = float64x2_t;
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // x86 SSE2
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#ifndef _MSC_VER
+#if __clang__ ||  !defined(_MSC_VER)
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wignored-attributes" // Ignore SIMD attributes on template param
@@ -173,7 +176,7 @@ template <class RAW> struct BaseVector
 #endif
 
 #if SIMD_ARCH_X86
-#ifdef _MSC_VER
+#if !__clang__ &&  defined(_MSC_VER)
 using Vec128u8  = __m128i;
 using Vec128i8  = __m128i;
 using Vec128u16 = __m128i;
@@ -204,7 +207,7 @@ using Vec128f64 = BaseVector<__m128d>;
 // x86 AVX/AVX2
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #if SIMD_ARCH_X86
-#ifdef _MSC_VER
+#if !__clang__ &&  defined(_MSC_VER)
 using Vec256u8  = __m256i;
 using Vec256i8  = __m256i;
 using Vec256u16 = __m256i;
@@ -235,7 +238,7 @@ using Vec256f64 = BaseVector<__m256d>;
 // x86 AVX512
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #if SIMD_ARCH_X86
-#ifdef _MSC_VER
+#if !__clang__ &&  defined(_MSC_VER)
 using Vec512u8  = __m512i;
 using Vec512i8  = __m512i;
 using Vec512u16 = __m512i;
@@ -306,7 +309,7 @@ static SIMD_INLINE Vec128f32 Set(const float    value) noexcept { return vdupq_n
 #endif
 
 #if SIMD_ARCH_X86
-template<class T, class Vector> static SIMD_INLINE Vector Set(const T value) noexcept {}
+template<class ScalarType, class VectorType> static SIMD_INLINE VectorType Set(const ScalarType value) noexcept {}
 // SSE2
 template<> SIMD_INLINE Vec128u8  Set(const uint8_t  value) noexcept { return _mm_set1_epi8  (value); }
 template<> SIMD_INLINE Vec128i8  Set(const int8_t   value) noexcept { return _mm_set1_epi8  (value); }
@@ -501,17 +504,63 @@ template<class Vector> static SIMD_INLINE Vector operator^(const Vector a, const
 static SIMD_INLINE Vec128Int operator^(const Vec128Int a, const Vec128Int b) noexcept { return _mm_xor_si128(a, b); }
 static SIMD_INLINE Vec128f32 operator^(const Vec128f32 a, const Vec128f32 b) noexcept { return _mm_xor_ps   (a, b); }
 static SIMD_INLINE Vec128f64 operator^(const Vec128f64 a, const Vec128f64 b) noexcept { return _mm_xor_pd   (a, b); }
+
+static SIMD_INLINE Vec128Int operator^(const Vec128Int a, const uint8_t  b) noexcept { return _mm_xor_si128(a, Set<uint8_t , Vec128u8 >(b)); }
+static SIMD_INLINE Vec128Int operator^(const Vec128Int a, const uint16_t b) noexcept { return _mm_xor_si128(a, Set<uint16_t, Vec128u16>(b)); }
+static SIMD_INLINE Vec128Int operator^(const Vec128Int a, const uint32_t b) noexcept { return _mm_xor_si128(a, Set<uint32_t, Vec128u32>(b)); }
+static SIMD_INLINE Vec128Int operator^(const Vec128Int a, const uint64_t b) noexcept { return _mm_xor_si128(a, Set<uint64_t, Vec128u64>(b)); }
 // AVX/AVX2
 static SIMD_INLINE Vec256Int operator^(const Vec256Int a, const Vec256Int b) noexcept { return _mm256_xor_si256(a, b); }
 static SIMD_INLINE Vec256f32 operator^(const Vec256f32 a, const Vec256f32 b) noexcept { return _mm256_xor_ps   (a, b); }
 static SIMD_INLINE Vec256f64 operator^(const Vec256f64 a, const Vec256f64 b) noexcept { return _mm256_xor_pd   (a, b); }
+
+static SIMD_INLINE Vec256Int operator^(const Vec256Int a, const uint8_t  b) noexcept { return _mm256_xor_si256(a, Set<uint8_t , Vec256u8 >(b)); }
+static SIMD_INLINE Vec256Int operator^(const Vec256Int a, const uint16_t b) noexcept { return _mm256_xor_si256(a, Set<uint16_t, Vec256u16>(b)); }
+static SIMD_INLINE Vec256Int operator^(const Vec256Int a, const uint32_t b) noexcept { return _mm256_xor_si256(a, Set<uint32_t, Vec256u32>(b)); }
+static SIMD_INLINE Vec256Int operator^(const Vec256Int a, const uint64_t b) noexcept { return _mm256_xor_si256(a, Set<uint64_t, Vec256u64>(b)); }
 // AVX512
 static SIMD_INLINE Vec512Int operator^(const Vec512Int a, const Vec512Int b) noexcept { return _mm512_xor_si512(a, b); }
 static SIMD_INLINE Vec512f32 operator^(const Vec512f32 a, const Vec512f32 b) noexcept { return _mm512_xor_ps   (a, b); }
 static SIMD_INLINE Vec512f64 operator^(const Vec512f64 a, const Vec512f64 b) noexcept { return _mm512_xor_pd   (a, b); }
+
+static SIMD_INLINE Vec512Int operator^(const Vec512Int a, const uint8_t  b) noexcept { return _mm512_xor_si512(a, Set<uint8_t , Vec512u8 >(b)); }
+static SIMD_INLINE Vec512Int operator^(const Vec512Int a, const uint16_t b) noexcept { return _mm512_xor_si512(a, Set<uint16_t, Vec512u16>(b)); }
+static SIMD_INLINE Vec512Int operator^(const Vec512Int a, const uint32_t b) noexcept { return _mm512_xor_si512(a, Set<uint32_t, Vec512u32>(b)); }
+static SIMD_INLINE Vec512Int operator^(const Vec512Int a, const uint64_t b) noexcept { return _mm512_xor_si512(a, Set<uint64_t, Vec512u64>(b)); }
 #endif
 // ^=
 template<class Vector, class T> static SIMD_INLINE Vector operator^=(Vector& a, const T b) noexcept { return (a = a ^ b); }
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Not
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#if SIMD_ARCH_ARM
+// Neon
+template<class Vector> static SIMD_INLINE Vector operator~(const Vector a) noexcept { return vmvnq_u32(a); }
+#endif
+
+#if SIMD_ARCH_X86
+// SSE2
+static SIMD_INLINE Vec128Int operator~(const Vec128Int a) noexcept { return _mm_xor_si128(a, Set<uint32_t, Vec128Int>(0xFFFFFFFF)); }
+//static SIMD_INLINE Vec128f32 operator~(const Vec128f32 a) noexcept { return _mm_xor_ps   (a, Set<uint32_t, Vec128Int>(0xFFFFFFFF)); }
+//static SIMD_INLINE Vec128f64 operator~(const Vec128f64 a) noexcept { return _mm_xor_pd   (a, Set<uint32_t, Vec128Int>(0xFFFFFFFF)); }
+// AVX/AVX2
+static SIMD_INLINE Vec256Int operator~(const Vec256Int a) noexcept { return _mm256_xor_si256(a, Set<uint32_t, Vec256Int>(0xFFFFFFFF)); }
+//static SIMD_INLINE Vec256f32 operator~(const Vec256f32 a) noexcept { return _mm256_xor_ps   (a, Set<uint32_t, Vec256Int>(0xFFFFFFFF)); }
+//static SIMD_INLINE Vec256f64 operator~(const Vec256f64 a) noexcept { return _mm256_xor_pd   (a, Set<uint32_t, Vec256Int>(0xFFFFFFFF)); }
+// AVX512
+static SIMD_INLINE Vec512Int operator~(const Vec512Int a) noexcept { return _mm512_xor_si512(a, Set<uint32_t, Vec512Int>(0xFFFFFFFF)); }
+//static SIMD_INLINE Vec512f32 operator~(const Vec512f32 a) noexcept { return _mm512_xor_ps   (a, Set<uint32_t, Vec512Int>(0xFFFFFFFF)); }
+//static SIMD_INLINE Vec512f64 operator~(const Vec512f64 a) noexcept { return _mm512_xor_pd   (a, Set<uint32_t, Vec512Int>(0xFFFFFFFF)); }
+#endif
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Ternary Logic
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#if SIMD_ARCH_X86
+template<int imm8> static SIMD_INLINE Vec256Int ternary_logic(const Vec256Int a, const Vec256Int b, const Vec256Int c) noexcept { return _mm256_ternarylogic_epi64(a, b, c, imm8); }
+template<int imm8> static SIMD_INLINE Vec512Int ternary_logic(const Vec512Int a, const Vec512Int b, const Vec512Int c) noexcept { return _mm512_ternarylogic_epi64(a, b, c, imm8); }
+#endif
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Sum
@@ -862,8 +911,75 @@ template<class Vector, class T> static SIMD_INLINE Vector operator<<=(Vector& a,
 template<class Vector, class T> static SIMD_INLINE Vector operator>>=(Vector& a, const T b) noexcept { return (a = a >> b); }
 
 // Rotation
-template<class Vector, class T = SimdScalarType> static SIMD_INLINE Vector rotl(const Vector a, const int b) noexcept { return (a << b) | (a >> (sizeof(T) * 8 - b)); }
-template<class Vector, class T = SimdScalarType> static SIMD_INLINE Vector rotr(const Vector a, const int b) noexcept { return (a >> b) | (a << (sizeof(T) * 8 - b)); }
+#if SIMD_ARCH_ARM
+template<class T = SimdScalarType> static SIMD_INLINE Vec128 rotl(const Vec128 a, const Vec128 b) noexcept { return (a << b) | (a >> (sizeof(T) * 8 - b)); }
+template<class T = SimdScalarType> static SIMD_INLINE Vec128 rotl(const Vec128 a, const int    b) noexcept { return (a << b) | (a >> (sizeof(T) * 8 - b)); }
+#endif
+
+#if SIMD_ARCH_X86
+// SSE2
+//template<class T = SimdScalarType> static SIMD_INLINE Vec128Int rotl(const Vec128Int a, const Vec128Int b) noexcept { return (a << b) | (a >> (sizeof(T) * 8 - b)); }
+template<class T = SimdScalarType> static SIMD_INLINE Vec128Int rotl(const Vec128Int a, const int       b) noexcept { return (a << b) | (a >> (sizeof(T) * 8 - b)); }
+// AVX/AVX2
+//template<class T = SimdScalarType> static SIMD_INLINE Vec256Int rotl(const Vec256Int a, const Vec256Int b) noexcept { return (a << b) | (a >> (sizeof(T) * 8 - b)); }
+template<class T = SimdScalarType> static SIMD_INLINE Vec256Int rotl(const Vec256Int a, const int       b) noexcept { return (a << b) | (a >> (sizeof(T) * 8 - b)); }
+// AVX512
+template<class T = SimdScalarType> static SIMD_INLINE Vec512Int rotl(const Vec512Int a, const Vec512Int b) noexcept {
+    //if constexpr (sizeof(T) == 1)      return (a << b) | (a >> (sizeof(T) * 8 - b));
+    //else if constexpr (sizeof(T) == 2) return (a << b) | (a >> (sizeof(T) * 8 - b));
+/*else*/ if constexpr (sizeof(T) == 4) return _mm512_rolv_epi32(a, b);
+    else if constexpr (sizeof(T) == 8) return _mm512_rolv_epi64(a, b);
+}
+
+// More rotation options
+template<class T = SimdScalarType, int shift_amount> static SIMD_INLINE Vec128Int rotl(const Vec128Int a, const int) noexcept {
+    static_assert(0 <= shift_amount && shift_amount < sizeof(T) * 8, "Invalid shift count");
+
+#if __SSSE3__
+    if constexpr (shift_amount == 56)     return _mm_shuffle_epi8(a, _mm_set_epi64x(0x080f0e0d0c0b0a09ull, 0x0007060504030201ull));//SSSE3
+#endif
+    if constexpr (shift_amount == 1)      return (a >> (sizeof(T) * 8 - shift_amount)) + a + a;
+    else if constexpr (shift_amount == 0) return a;
+    else                                  return (a << shift_amount) | (a >> (sizeof(T) * 8 - shift_amount));
+}
+template<class T = SimdScalarType, int shift_amount> static SIMD_INLINE Vec256Int rotl(const Vec256Int a, const int) noexcept {
+    static_assert(0 <= shift_amount && shift_amount < sizeof(T) * 8, "Invalid shift count");
+
+    if constexpr (shift_amount == 56)     return _mm256_shuffle_epi8(a, _mm256_set_epi64x(0x080f0e0d0c0b0a09ull, 0x0007060504030201ull, 0x080f0e0d0c0b0a09ull, 0x0007060504030201ull));
+    else if constexpr (shift_amount == 1) return (a >> (sizeof(T) * 8 - shift_amount)) + a + a;
+    else if constexpr (shift_amount == 0) return a;
+    else                                  return (a << shift_amount) | (a >> (sizeof(T) * 8 - shift_amount));
+}
+template<class T = SimdScalarType, int shift_amount> static SIMD_INLINE Vec512Int rotl(const Vec512Int a, const int) noexcept {
+    static_assert(0 <= shift_amount && shift_amount < sizeof(T) * 8, "Invalid shift count");
+
+    if constexpr (sizeof(T) == 4)         return _mm512_rol_epi32(a, shift_amount);
+    else if constexpr (sizeof(T) == 8)    return _mm512_rol_epi64(a, shift_amount);
+    else if constexpr (shift_amount == 1) return (a >> (sizeof(T) * 8 - shift_amount)) + a + a;
+    else if constexpr (shift_amount == 0) return a;
+    else                                  return (a << shift_amount) | (a >> (sizeof(T) * 8 - shift_amount));
+}
+#endif
+
+// Scalar rotation
+#if __cplusplus >= 202002L
+static SIMD_INLINE uint8_t  rotl(const uint8_t  a, const int shift_amount) noexcept { return std::rotl(a, shift_amount); }
+static SIMD_INLINE uint16_t rotl(const uint16_t a, const int shift_amount) noexcept { return std::rotl(a, shift_amount); }
+#endif
+static SIMD_INLINE uint32_t rotl(const uint32_t a, const int shift_amount) noexcept {
+#ifdef _MSC_VER
+    return _rotl(a, shift_amount);
+#else
+    return std::rotl(a, shift_amount);
+#endif
+}
+static SIMD_INLINE uint64_t rotl(const uint64_t a, const int shift_amount) noexcept {
+#ifdef _MSC_VER
+    return _rotl64(a, shift_amount);
+#else
+    return std::rotl(a, shift_amount);
+#endif
+}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // CPU feature detection
@@ -929,7 +1045,7 @@ static SIMD_INLINE CpuFeatures operator|=(CpuFeatures& lhs, const CpuFeatures rh
 /// <summary>
 /// CPU features detection
 /// </summary>
-/// <returns></returns>
+/// <returns>The features of the CPU</returns>
 CpuFeatures get_cpu_features() noexcept;
 static SIMD_INLINE bool cpu_supports(CpuFeatures feature) noexcept { return feature & simd::get_cpu_features(); }
 

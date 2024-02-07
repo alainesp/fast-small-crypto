@@ -6,7 +6,7 @@
 cmake_minimum_required (VERSION 3.12)
 
 project (fast-small-crypto VERSION 1.0.0.0 DESCRIPTION "Fast crypto implementations for small data"
-			HOMEPAGE_URL https://github.com/alainesp/fast-small-crypto LANGUAGES C CXX)
+			HOMEPAGE_URL https://github.com/alainesp/fast-small-crypto LANGUAGES CXX)
 
 # Enable Hot Reload for MSVC compilers if supported.
 if (POLICY CMP0141)
@@ -17,22 +17,43 @@ endif()
 ###############################################################################################################
 # Library configuration
 ###############################################################################################################
-option(FSC_BUILD_EXAMPLE "Build the example" OFF)
-option(FSC_BUILD_BENCHMARK "Build the benchmark testing" ON)
-option(FSC_BUILD_TESTS "Build the tests" ON)
+option(FSC_BUILD_EXAMPLE   "Build the example"           OFF)
+option(FSC_BUILD_BENCHMARK "Build the benchmark testing" OFF)
+option(FSC_BUILD_TESTS     "Build the tests"             OFF)
 
 if(CMAKE_COMPILER_IS_GNUCXX)
-	set_source_files_properties("md4_avx.cpp" PROPERTIES COMPILE_FLAGS -mavx512f)
+	set_source_files_properties("md4_avx.cpp"    "md5_avx.cpp"    "sha1_avx.cpp"    "sha256_avx.cpp"    "sha512_avx.cpp"    PROPERTIES COMPILE_FLAGS -mavx)
+	set_source_files_properties("md4_avx2.cpp"   "md5_avx2.cpp"   "sha1_avx2.cpp"   "sha256_avx2.cpp"   "sha512_avx2.cpp"   PROPERTIES COMPILE_FLAGS -mavx2)
+	set_source_files_properties("md4_avx512.cpp" "md5_avx512.cpp" "sha1_avx512.cpp" "sha256_avx512.cpp" "sha512_avx512.cpp" PROPERTIES COMPILE_FLAGS -mavx512f)
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    set_source_files_properties("md4_avx.cpp" PROPERTIES COMPILE_FLAGS -mavx512f)
+    set_source_files_properties("md4_avx.cpp"    "md5_avx.cpp"    "sha1_avx.cpp"    "sha256_avx.cpp"    "sha512_avx.cpp"    PROPERTIES COMPILE_FLAGS -mavx)
+	set_source_files_properties("md4_avx2.cpp"   "md5_avx2.cpp"   "sha1_avx2.cpp"   "sha256_avx2.cpp"   "sha512_avx2.cpp"   PROPERTIES COMPILE_FLAGS -mavx2)
+	set_source_files_properties("md4_avx512.cpp" "md5_avx512.cpp" "sha1_avx512.cpp" "sha256_avx512.cpp" "sha512_avx512.cpp" PROPERTIES COMPILE_FLAGS -mavx512f)
 elseif(GLM_USE_INTEL)
-	set_source_files_properties("md4_avx.cpp" PROPERTIES COMPILE_FLAGS /QxAVX)
+	set_source_files_properties("md4_avx.cpp"    "md5_avx.cpp"    "sha1_avx.cpp"    "sha256_avx.cpp"    "sha512_avx.cpp"    PROPERTIES COMPILE_FLAGS /QxAVX)
+	set_source_files_properties("md4_avx2.cpp"   "md5_avx2.cpp"   "sha1_avx2.cpp"   "sha256_avx2.cpp"   "sha512_avx2.cpp"   PROPERTIES COMPILE_FLAGS /QxAVX2)
+	set_source_files_properties("md4_avx512.cpp" "md5_avx512.cpp" "sha1_avx512.cpp" "sha256_avx512.cpp" "sha512_avx512.cpp" PROPERTIES COMPILE_FLAGS /QxAVX512F)
 elseif(MSVC)
-	set_source_files_properties("md4_avx.cpp" PROPERTIES COMPILE_FLAGS /arch:AVX)
+	set_source_files_properties("md4_avx.cpp"    "md5_avx.cpp"    "sha1_avx.cpp"    "sha256_avx.cpp"    "sha512_avx.cpp"    PROPERTIES COMPILE_FLAGS /arch:AVX)
+	set_source_files_properties("md4_avx2.cpp"   "md5_avx2.cpp"   "sha1_avx2.cpp"   "sha256_avx2.cpp"   "sha512_avx2.cpp"   PROPERTIES COMPILE_FLAGS /arch:AVX2)
+	set_source_files_properties("md4_avx512.cpp" "md5_avx512.cpp" "sha1_avx512.cpp" "sha256_avx512.cpp" "sha512_avx512.cpp" PROPERTIES COMPILE_FLAGS /arch:AVX512)
 endif()
-add_library(FSC STATIC "cpuid.cpp" "md4.h" "md4.cpp" "md4_avx.cpp")
+
+add_library(FSC STATIC "cpuid.cpp"
+    "md4.cpp"        "md5.cpp"        "sha1.cpp"        "sha256.cpp"        "sha512.cpp"
+    "md4_avx.cpp"    "md5_avx.cpp"    "sha1_avx.cpp"    "sha256_avx.cpp"    "sha512_avx.cpp"
+    "md4_avx2.cpp"   "md5_avx2.cpp"   "sha1_avx2.cpp"   "sha256_avx2.cpp"   "sha512_avx2.cpp"
+    "md4_avx512.cpp" "md5_avx512.cpp" "sha1_avx512.cpp" "sha256_avx512.cpp" "sha512_avx512.cpp"
+)
+if(CMAKE_COMPILER_IS_GNUCXX)
+    target_compile_options(FSC PRIVATE -O3 -DNDEBUG)
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    target_compile_options(FSC PRIVATE -fomit-frame-pointer -O3 -DNDEBUG) # -flto
+elseif(MSVC)
+    target_compile_options(FSC PRIVATE /O2 /DNDEBUG) # /GL : Enables whole program optimization
+endif()
 target_include_directories(FSC INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
-set_property(TARGET FSC PROPERTY CXX_STANDARD 20) # C++ language to use
+set_target_properties(FSC PROPERTIES CXX_STANDARD 20 INTERPROCEDURAL_OPTIMIZATION TRUE)
 
 # Warning level 4 and all warnings as errors
 if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.24)
@@ -61,8 +82,8 @@ if(FSC_BUILD_TESTS)
 
     enable_testing()
 
-    add_executable(runUnitTests "tests.cpp" "tests_md4.cpp")
-    set_property(TARGET runUnitTests PROPERTY CXX_STANDARD 20) # C++ language to use
+    add_executable(runUnitTests "tests.cpp" "tests_md4.cpp" "tests_md5.cpp" "tests_sha1.cpp" "tests_sha256.cpp" "tests_sha512.cpp")
+    set_target_properties(runUnitTests PROPERTIES CXX_STANDARD 20 INTERPROCEDURAL_OPTIMIZATION TRUE)
     target_link_libraries(runUnitTests PRIVATE FSC gtest_main wy)
 
     include(GoogleTest)
@@ -79,8 +100,8 @@ endif()
 #endif()
 
 if(FSC_BUILD_BENCHMARK)
-    add_executable(fsc-benchmark "benchmark_md4.cpp")
-    set_property(TARGET fsc-benchmark PROPERTY CXX_STANDARD 20)	 # C++ language to use
+    add_executable(fsc-benchmark "benchmark_md4.cpp" "benchmark_md5.cpp" "benchmark_sha1.cpp" "benchmark_sha256.cpp" "benchmark_sha512.cpp")
+    set_target_properties(fsc-benchmark PROPERTIES CXX_STANDARD 20 INTERPROCEDURAL_OPTIMIZATION TRUE)
 
     FetchContent_Declare(benchmark URL https://github.com/google/benchmark/archive/refs/tags/v1.8.3.zip)
     set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "" FORCE)

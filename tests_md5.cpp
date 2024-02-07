@@ -1,16 +1,16 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// MD4 Message-Digest Algorithm
+// MD5 Message-Digest Algorithm
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Automatically generated code by SIMD-function library
 //
 // Unit Testing
 
 #include <gtest/gtest.h>
-#include "md4.h"
+#include "md5.h"
 #include <wy.hpp>
 #include "reference_implementation.cpp"
 
-TEST(md4, md4_block_PLAIN_C)
+TEST(md5, md5_block_PLAIN_C)
 {
 	if (!simd::cpu_supports(simd::CpuFeatures::PLAIN_C))
 		GTEST_SKIP() << "No PLAIN_C";
@@ -41,8 +41,8 @@ TEST(md4, md4_block_PLAIN_C)
 
         // Hash
         for (size_t j = 0; j < parallelism; j++)
-			md4_transform(state + j * 4, block + j * 16);
-		md4_block_plain_c(state_simd, block_simd);
+			md5_transform(state + j * 4, block + j * 16);
+		md5_block_plain_c(state_simd, block_simd);
 
         // Compare results
 		for (size_t j = 0; j < std::size(state); j++)
@@ -51,7 +51,7 @@ TEST(md4, md4_block_PLAIN_C)
 			ASSERT_EQ(reinterpret_cast<uint32_t*>(block_simd)[j / 16 + (j % 16) * parallelism], block[j]);
     }
 }
-TEST(md4, md4_block_SSE2_x3)
+TEST(md5, md5_block_SSE2_x3)
 {
 	if (!simd::cpu_supports(simd::CpuFeatures::SSE2))
 		GTEST_SKIP() << "No SSE2";
@@ -82,8 +82,8 @@ TEST(md4, md4_block_SSE2_x3)
 
         // Hash
         for (size_t j = 0; j < parallelism; j++)
-			md4_transform(state + j * 4, block + j * 16);
-		md4_block_sse2_x3(state_simd, block_simd);
+			md5_transform(state + j * 4, block + j * 16);
+		md5_block_sse2_x3(state_simd, block_simd);
 
         // Compare results
 		for (size_t j = 0; j < std::size(state); j++)
@@ -92,7 +92,7 @@ TEST(md4, md4_block_SSE2_x3)
 			ASSERT_EQ(reinterpret_cast<uint32_t*>(block_simd)[j / 16 + (j % 16) * parallelism], block[j]);
     }
 }
-TEST(md4, md4_block_AVX_x3)
+TEST(md5, md5_block_AVX_x3)
 {
 	if (!simd::cpu_supports(simd::CpuFeatures::AVX))
 		GTEST_SKIP() << "No AVX";
@@ -123,8 +123,8 @@ TEST(md4, md4_block_AVX_x3)
 
         // Hash
         for (size_t j = 0; j < parallelism; j++)
-			md4_transform(state + j * 4, block + j * 16);
-		md4_block_avx_x3(state_simd, block_simd);
+			md5_transform(state + j * 4, block + j * 16);
+		md5_block_avx_x3(state_simd, block_simd);
 
         // Compare results
 		for (size_t j = 0; j < std::size(state); j++)
@@ -133,7 +133,7 @@ TEST(md4, md4_block_AVX_x3)
 			ASSERT_EQ(reinterpret_cast<uint32_t*>(block_simd)[j / 16 + (j % 16) * parallelism], block[j]);
     }
 }
-TEST(md4, md4_block_AVX2_x3)
+TEST(md5, md5_block_AVX2_x3)
 {
 	if (!simd::cpu_supports(simd::CpuFeatures::AVX2))
 		GTEST_SKIP() << "No AVX2";
@@ -164,8 +164,8 @@ TEST(md4, md4_block_AVX2_x3)
 
         // Hash
         for (size_t j = 0; j < parallelism; j++)
-			md4_transform(state + j * 4, block + j * 16);
-		md4_block_avx2_x3(state_simd, block_simd);
+			md5_transform(state + j * 4, block + j * 16);
+		md5_block_avx2_x3(state_simd, block_simd);
 
         // Compare results
 		for (size_t j = 0; j < std::size(state); j++)
@@ -174,7 +174,7 @@ TEST(md4, md4_block_AVX2_x3)
 			ASSERT_EQ(reinterpret_cast<uint32_t*>(block_simd)[j / 16 + (j % 16) * parallelism], block[j]);
     }
 }
-TEST(md4, md4_block_AVX512_x4)
+TEST(md5, md5_block_AVX512_x4)
 {
 	if (!simd::cpu_supports(simd::CpuFeatures::AVX512))
 		GTEST_SKIP() << "No AVX512";
@@ -205,8 +205,8 @@ TEST(md4, md4_block_AVX512_x4)
 
         // Hash
         for (size_t j = 0; j < parallelism; j++)
-			md4_transform(state + j * 4, block + j * 16);
-		md4_block_avx512_x4(state_simd, block_simd);
+			md5_transform(state + j * 4, block + j * 16);
+		md5_block_avx512_x4(state_simd, block_simd);
 
         // Compare results
 		for (size_t j = 0; j < std::size(state); j++)

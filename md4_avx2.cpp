@@ -12,9 +12,9 @@ using namespace simd;
 //// </summary>
 //// <param name="state">The md4 state</param>
 //// <param name="block">The message to compress</param>
-extern "C" void md4_block_avx_x3(simd::Vec128u32 state[12], const simd::Vec128u32 block[48]) noexcept
+extern "C" void md4_block_avx2_x3(simd::Vec256u32 state[12], const simd::Vec256u32 block[48]) noexcept
 {
-	simd::Vec128u32 a0, a1, a2, c0, c1, c2, d0, d1, d2, b0, b1, b2, t0, t1, t2, tt0, tt1, tt2;
+	simd::Vec256u32 a0, a1, a2, c0, c1, c2, d0, d1, d2, b0, b1, b2, t0, t1, t2, tt0, tt1, tt2;
 
 	// Load state
 	a0 = load(state +  0);	a1 = load(state +  1);	a2 = load(state +  2);
