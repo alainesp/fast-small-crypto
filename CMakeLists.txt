@@ -40,7 +40,7 @@ elseif(MSVC)
 	set_source_files_properties("md4_avx.cpp"    "md5_avx.cpp"    "sha1_avx.cpp"    "sha256_avx.cpp"    "sha512_avx.cpp"    PROPERTIES COMPILE_FLAGS /arch:AVX)
 	set_source_files_properties("md4_avx2.cpp"   "md5_avx2.cpp"   "sha1_avx2.cpp"   "sha256_avx2.cpp"   "sha512_avx2.cpp"   PROPERTIES COMPILE_FLAGS /arch:AVX2)
 	set_source_files_properties("md4_avx512.cpp" "md5_avx512.cpp" "sha1_avx512.cpp" "sha256_avx512.cpp" "sha512_avx512.cpp" PROPERTIES COMPILE_FLAGS /arch:AVX512)
-    set_source_files_properties("sha1_x86_shani.cpp" PROPERTIES COMPILE_FLAGS /arch:AVX)
+    set_source_files_properties("sha1_x86_shani.cpp" PROPERTIES COMPILE_FLAGS /arch:SSE2)
 endif()
 
 add_library(FSC STATIC "cpuid.cpp" "sha1_x86_shani.cpp"

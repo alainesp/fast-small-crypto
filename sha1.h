@@ -19,12 +19,26 @@ extern "C"
 /// <param name="block">The message to compress</param>
 void sha1_block_plain_c(uint32_t state[5], const uint32_t W[16]) noexcept;
 
+
 /// <summary>
 /// SHA1 compress block
 /// </summary>
 /// <param name="state">The SHA1 state</param>
 /// <param name="block">The message to compress</param>
 void sha1_block_shani(uint32_t state[5], const uint32_t W[16]) noexcept;
+/// <summary>
+/// SHA1 compress block
+/// </summary>
+/// <param name="state">The SHA1 state</param>
+/// <param name="block">The message to compress</param>
+void sha1_block_shani_x2(uint32_t state[10], const uint32_t W[32]) noexcept;
+/// <summary>
+/// SHA1 compress block
+/// </summary>
+/// <param name="state">The SHA1 state</param>
+/// <param name="block">The message to compress</param>
+void sha1_block_shani_x3(uint32_t state[15], const uint32_t W[48]) noexcept;
+
 
 /// <summary>
 /// SHA1 compress block

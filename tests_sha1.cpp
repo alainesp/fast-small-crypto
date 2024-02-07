@@ -57,14 +57,13 @@ TEST(sha1, sha1_block_SHANI)
 	if (!simd::cpu_supports(simd::CpuFeatures::SHANI))
 		GTEST_SKIP() << "No SHA-NI";
 
-	constexpr size_t parallel_factor = 1;
-	constexpr size_t parallelism = parallel_factor * sizeof(uint32_t) / sizeof(uint32_t);
+	constexpr size_t parallelism = 1;
 
 	uint32_t state[5 * parallelism];
-	uint32_t state_simd[5 * parallel_factor];
+	uint32_t state_simd[5 * parallelism];
 	ASSERT_EQ(sizeof(state), sizeof(state_simd));
 	uint32_t W[16 * parallelism];
-	uint32_t W_simd[16 * parallel_factor];
+	uint32_t W_simd[16 * parallelism];
 	ASSERT_EQ(sizeof(W), sizeof(W_simd));
 
 	// Create a pseudo-random generator
@@ -73,13 +72,9 @@ TEST(sha1, sha1_block_SHANI)
 	for (size_t i = 0; i < 64; i++)
 	{
 		r.generate_stream<uint32_t>(state);
-		// Copy values to simd
-		for (size_t j = 0; j < std::size(state); j++)
-			reinterpret_cast<uint32_t*>(state_simd)[j / 5 + (j % 5) * parallelism] = state[j];
+		memcpy(state_simd, state, sizeof(state)); // Copy values to simd
 		r.generate_stream<uint32_t>(W);
-		// Copy values to simd
-		for (size_t j = 0; j < std::size(W); j++)
-			reinterpret_cast<uint32_t*>(W_simd)[j / 16 + (j % 16) * parallelism] = W[j];
+		memcpy(W_simd, W, sizeof(W));            // Copy values to simd
 
 		// Hash
 		for (size_t j = 0; j < parallelism; j++)
@@ -87,10 +82,75 @@ TEST(sha1, sha1_block_SHANI)
 		sha1_block_shani(state_simd, W_simd);
 
 		// Compare results
-		for (size_t j = 0; j < std::size(state); j++)
-			ASSERT_EQ(reinterpret_cast<uint32_t*>(state_simd)[j / 5 + (j % 5) * parallelism], state[j]);
-		for (size_t j = 0; j < std::size(W); j++)
-			ASSERT_EQ(reinterpret_cast<uint32_t*>(W_simd)[j / 16 + (j % 16) * parallelism], W[j]);
+		ASSERT_EQ(0, memcmp(state_simd, state, sizeof(state)));
+	}
+}
+
+TEST(sha1, sha1_block_SHANI_x2)
+{
+	if (!simd::cpu_supports(simd::CpuFeatures::SHANI))
+		GTEST_SKIP() << "No SHA-NI";
+
+	constexpr size_t parallelism = 2;
+
+	uint32_t state[5 * parallelism];
+	uint32_t state_simd[5 * parallelism];
+	ASSERT_EQ(sizeof(state), sizeof(state_simd));
+	uint32_t W[16 * parallelism];
+	uint32_t W_simd[16 * parallelism];
+	ASSERT_EQ(sizeof(W), sizeof(W_simd));
+
+	// Create a pseudo-random generator
+	wy::rand r;
+
+	for (size_t i = 0; i < 64; i++)
+	{
+		r.generate_stream<uint32_t>(state);
+		memcpy(state_simd, state, sizeof(state)); // Copy values to simd
+		r.generate_stream<uint32_t>(W);
+		memcpy(W_simd, W, sizeof(W));            // Copy values to simd
+
+		// Hash
+		for (size_t j = 0; j < parallelism; j++)
+			sha1_transform(state + j * 5, W + j * 16);
+		sha1_block_shani_x2(state_simd, W_simd);
+
+		// Compare results
+		ASSERT_EQ(0, memcmp(state_simd, state, sizeof(state)));
+	}
+}
+
+TEST(sha1, sha1_block_SHANI_x3)
+{
+	if (!simd::cpu_supports(simd::CpuFeatures::SHANI))
+		GTEST_SKIP() << "No SHA-NI";
+
+	constexpr size_t parallelism = 3;
+
+	uint32_t state[5 * parallelism];
+	uint32_t state_simd[5 * parallelism];
+	ASSERT_EQ(sizeof(state), sizeof(state_simd));
+	uint32_t W[16 * parallelism];
+	uint32_t W_simd[16 * parallelism];
+	ASSERT_EQ(sizeof(W), sizeof(W_simd));
+
+	// Create a pseudo-random generator
+	wy::rand r;
+
+	for (size_t i = 0; i < 64; i++)
+	{
+		r.generate_stream<uint32_t>(state);
+		memcpy(state_simd, state, sizeof(state)); // Copy values to simd
+		r.generate_stream<uint32_t>(W);
+		memcpy(W_simd, W, sizeof(W));            // Copy values to simd
+
+		// Hash
+		for (size_t j = 0; j < parallelism; j++)
+			sha1_transform(state + j * 5, W + j * 16);
+		sha1_block_shani_x3(state_simd, W_simd);
+
+		// Compare results
+		ASSERT_EQ(0, memcmp(state_simd, state, sizeof(state)));
 	}
 }
 
