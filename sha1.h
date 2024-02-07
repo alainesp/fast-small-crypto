@@ -24,6 +24,13 @@ void sha1_block_plain_c(uint32_t state[5], const uint32_t W[16]) noexcept;
 /// </summary>
 /// <param name="state">The SHA1 state</param>
 /// <param name="block">The message to compress</param>
+void sha1_block_shani(uint32_t state[5], const uint32_t W[16]) noexcept;
+
+/// <summary>
+/// SHA1 compress block
+/// </summary>
+/// <param name="state">The SHA1 state</param>
+/// <param name="block">The message to compress</param>
 void sha1_block_sse2(simd::Vec128u32 state[5], const simd::Vec128u32 W[16]) noexcept;
 
 /// <summary>

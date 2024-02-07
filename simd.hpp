@@ -1011,23 +1011,24 @@ enum class CpuFeatures : uint32_t {
 	LZCNT      = 1 << 13,
 	BMI        = 1 << 14,
 	BMI2       = 1 << 15,
+    SHANI      = 1 << 16,
 
-    AVX512 = 1 << 16, // The same as AVX512F
-	AVX512F    = 1 << 16,
-	AVX512VL   = 1 << 17,
-	AVX512CD   = 1 << 18,
-	AVX512DQ   = 1 << 19,
-	AVX512BW   = 1 << 20,
-	AVX512FP16 = 1 << 21,
+    AVX512 = 1 << 17, // The same as AVX512F
+	AVX512F    = 1 << 17,
+	AVX512VL   = 1 << 18,
+	AVX512CD   = 1 << 19,
+	AVX512DQ   = 1 << 20,
+	AVX512BW   = 1 << 21,
+	AVX512FP16 = 1 << 22,
 
-	VNNI       = 1 << 22,
-	VPCLMULQDQ = 1 << 23,
-	VBMI       = 1 << 24,
-	VBMI2      = 1 << 25,
-	VAES       = 1 << 26,
-	POPCNTDQ   = 1 << 27,
-	BITALG     = 1 << 28,
-	GFNI	   = 1 << 29
+	VNNI       = 1 << 23,
+	VPCLMULQDQ = 1 << 24,
+	VBMI       = 1 << 25,
+	VBMI2      = 1 << 26,
+	VAES       = 1 << 27,
+	POPCNTDQ   = 1 << 28,
+	BITALG     = 1 << 29,
+	GFNI	   = 1 << 30
 #endif
 };
 static SIMD_INLINE bool operator&(const CpuFeatures lhs, const CpuFeatures rhs) noexcept

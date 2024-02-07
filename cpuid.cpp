@@ -114,9 +114,10 @@ static CpuFeatures cpu_feature_flag_x86() noexcept {
 	// Extended features
 	if (max_level >= 7) {
 		cpuid(7, 0, abcd);
-		flags |=  is_bit_set(abcd[1],  3)               ? CpuFeatures::BMI  : CpuFeatures::NONE;
-		flags |= (is_bit_set(abcd[1],  5) && xsave_ymm) ? CpuFeatures::AVX2 : CpuFeatures::NONE;
-		flags |=  is_bit_set(abcd[1],  8)               ? CpuFeatures::BMI2 : CpuFeatures::NONE;
+		flags |=  is_bit_set(abcd[1],  3)               ? CpuFeatures::BMI   : CpuFeatures::NONE;
+		flags |= (is_bit_set(abcd[1],  5) && xsave_ymm) ? CpuFeatures::AVX2  : CpuFeatures::NONE;
+		flags |=  is_bit_set(abcd[1],  8)               ? CpuFeatures::BMI2  : CpuFeatures::NONE;
+		flags |=  is_bit_set(abcd[1], 29)               ? CpuFeatures::SHANI : CpuFeatures::NONE;
 
 		flags |= (is_bit_set(abcd[1], 16) && xsave_zmm) ? CpuFeatures::AVX512F  : CpuFeatures::NONE;
 		flags |= (is_bit_set(abcd[1], 17) && xsave_zmm) ? CpuFeatures::AVX512DQ : CpuFeatures::NONE;
