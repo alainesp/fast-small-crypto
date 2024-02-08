@@ -19,6 +19,21 @@ extern "C"
 /// <param name="block">The message to compress</param>
 void sha256_block_plain_c(uint32_t state[8], const uint32_t W[16]) noexcept;
 
+
+/// <summary>
+/// SHA256 compress block
+/// </summary>
+/// <param name="state">The SHA256 state</param>
+/// <param name="block">The message to compress</param>
+void sha256_block_shani(uint32_t state[8], const uint32_t W[16]) noexcept;
+/// <summary>
+/// SHA256 compress block
+/// </summary>
+/// <param name="state">The SHA256 state</param>
+/// <param name="block">The message to compress</param>
+void sha256_block_shani_x2(uint32_t state[16], const uint32_t W[32]) noexcept;
+
+
 /// <summary>
 /// SHA256 compress block
 /// </summary>

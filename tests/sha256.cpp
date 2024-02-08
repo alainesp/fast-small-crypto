@@ -51,6 +51,75 @@ TEST(sha256, sha256_block_PLAIN_C)
 			ASSERT_EQ(reinterpret_cast<uint32_t*>(W_simd)[j / 16 + (j % 16) * parallelism], W[j]);
     }
 }
+
+TEST(sha256, sha256_block_SHANI)
+{
+	if (!simd::cpu_supports(simd::CpuFeatures::SHANI | simd::CpuFeatures::SSE41))
+		GTEST_SKIP() << "No SHANI";
+
+	constexpr size_t parallelism = 1;
+
+	uint32_t state[8 * parallelism];
+	uint32_t state_simd[8 * parallelism];
+	ASSERT_EQ(sizeof(state), sizeof(state_simd));
+	uint32_t W[16 * parallelism];
+	uint32_t W_simd[16 * parallelism];
+	ASSERT_EQ(sizeof(W), sizeof(W_simd));
+
+	// Create a pseudo-random generator
+	wy::rand r;
+
+	for (size_t i = 0; i < 64; i++)
+	{
+		r.generate_stream<uint32_t>(state);
+		memcpy(state_simd, state, sizeof(state)); // Copy values to simd
+		r.generate_stream<uint32_t>(W);
+		memcpy(W_simd, W, sizeof(W));             // Copy values to simd
+
+		// Hash
+		for (size_t j = 0; j < parallelism; j++)
+			sha256_transform(state + j * 8, W + j * 16);
+		sha256_block_shani(state_simd, W_simd);
+
+		// Compare results
+		ASSERT_EQ(0, memcmp(state_simd, state, sizeof(state)));
+	}
+}
+
+TEST(sha256, sha256_block_SHANI_x2)
+{
+	if (!simd::cpu_supports(simd::CpuFeatures::SHANI | simd::CpuFeatures::SSE41))
+		GTEST_SKIP() << "No SHANI";
+
+	constexpr size_t parallelism = 2;
+
+	uint32_t state[8 * parallelism];
+	uint32_t state_simd[8 * parallelism];
+	ASSERT_EQ(sizeof(state), sizeof(state_simd));
+	uint32_t W[16 * parallelism];
+	uint32_t W_simd[16 * parallelism];
+	ASSERT_EQ(sizeof(W), sizeof(W_simd));
+
+	// Create a pseudo-random generator
+	wy::rand r;
+
+	for (size_t i = 0; i < 64; i++)
+	{
+		r.generate_stream<uint32_t>(state);
+		memcpy(state_simd, state, sizeof(state)); // Copy values to simd
+		r.generate_stream<uint32_t>(W);
+		memcpy(W_simd, W, sizeof(W));             // Copy values to simd
+
+		// Hash
+		for (size_t j = 0; j < parallelism; j++)
+			sha256_transform(state + j * 8, W + j * 16);
+		sha256_block_shani_x2(state_simd, W_simd);
+
+		// Compare results
+		ASSERT_EQ(0, memcmp(state_simd, state, sizeof(state)));
+	}
+}
+
 TEST(sha256, sha256_block_SSE2)
 {
 	if (!simd::cpu_supports(simd::CpuFeatures::SSE2))

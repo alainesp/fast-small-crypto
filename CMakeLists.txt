@@ -25,25 +25,25 @@ if(CMAKE_COMPILER_IS_GNUCXX)
 	set_source_files_properties("src/md4_avx.cpp"    "src/md5_avx.cpp"    "src/sha1_avx.cpp"    "src/sha256_avx.cpp"    "src/sha512_avx.cpp"    PROPERTIES COMPILE_FLAGS -mavx)
 	set_source_files_properties("src/md4_avx2.cpp"   "src/md5_avx2.cpp"   "src/sha1_avx2.cpp"   "src/sha256_avx2.cpp"   "src/sha512_avx2.cpp"   PROPERTIES COMPILE_FLAGS -mavx2)
 	set_source_files_properties("src/md4_avx512.cpp" "src/md5_avx512.cpp" "src/sha1_avx512.cpp" "src/sha256_avx512.cpp" "src/sha512_avx512.cpp" PROPERTIES COMPILE_FLAGS -mavx512f)
-    set_source_files_properties("src/sha1_x86_shani.cpp" PROPERTIES COMPILE_FLAGS -msha)
+    set_source_files_properties("src/x86_shani.cpp" PROPERTIES COMPILE_FLAGS "-msha -msse4.1")
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     set_source_files_properties("src/md4_avx.cpp"    "src/md5_avx.cpp"    "src/sha1_avx.cpp"    "src/sha256_avx.cpp"    "src/sha512_avx.cpp"    PROPERTIES COMPILE_FLAGS -mavx)
 	set_source_files_properties("src/md4_avx2.cpp"   "src/md5_avx2.cpp"   "src/sha1_avx2.cpp"   "src/sha256_avx2.cpp"   "src/sha512_avx2.cpp"   PROPERTIES COMPILE_FLAGS -mavx2)
 	set_source_files_properties("src/md4_avx512.cpp" "src/md5_avx512.cpp" "src/sha1_avx512.cpp" "src/sha256_avx512.cpp" "src/sha512_avx512.cpp" PROPERTIES COMPILE_FLAGS -mavx512f)
-    set_source_files_properties("src/sha1_x86_shani.cpp" PROPERTIES COMPILE_FLAGS -msha)
+    set_source_files_properties("src/x86_shani.cpp" PROPERTIES COMPILE_FLAGS "-msha -msse4.1")
 elseif(GLM_USE_INTEL)
 	set_source_files_properties("src/md4_avx.cpp"    "src/md5_avx.cpp"    "src/sha1_avx.cpp"    "src/sha256_avx.cpp"    "src/sha512_avx.cpp"    PROPERTIES COMPILE_FLAGS /QxAVX)
 	set_source_files_properties("src/md4_avx2.cpp"   "src/md5_avx2.cpp"   "src/sha1_avx2.cpp"   "src/sha256_avx2.cpp"   "src/sha512_avx2.cpp"   PROPERTIES COMPILE_FLAGS /QxAVX2)
 	set_source_files_properties("src/md4_avx512.cpp" "src/md5_avx512.cpp" "src/sha1_avx512.cpp" "src/sha256_avx512.cpp" "src/sha512_avx512.cpp" PROPERTIES COMPILE_FLAGS /QxAVX512F)
-    set_source_files_properties("src/sha1_x86_shani.cpp" PROPERTIES COMPILE_FLAGS /QxSHA)
+    set_source_files_properties("src/x86_shani.cpp" PROPERTIES COMPILE_FLAGS "/QxSHA /QxSSE4.1")
 elseif(MSVC)
 	set_source_files_properties("src/md4_avx.cpp"    "src/md5_avx.cpp"    "src/sha1_avx.cpp"    "src/sha256_avx.cpp"    "src/sha512_avx.cpp"    PROPERTIES COMPILE_FLAGS /arch:AVX)
 	set_source_files_properties("src/md4_avx2.cpp"   "src/md5_avx2.cpp"   "src/sha1_avx2.cpp"   "src/sha256_avx2.cpp"   "src/sha512_avx2.cpp"   PROPERTIES COMPILE_FLAGS /arch:AVX2)
 	set_source_files_properties("src/md4_avx512.cpp" "src/md5_avx512.cpp" "src/sha1_avx512.cpp" "src/sha256_avx512.cpp" "src/sha512_avx512.cpp" PROPERTIES COMPILE_FLAGS /arch:AVX512)
-    set_source_files_properties("src/sha1_x86_shani.cpp" PROPERTIES COMPILE_FLAGS /arch:SSE2)
+    set_source_files_properties("src/x86_shani.cpp" PROPERTIES COMPILE_FLAGS /arch:SSE2)
 endif()
 
-add_library(FSC STATIC "src/cpuid.cpp" "src/sha1_x86_shani.cpp"
+add_library(FSC STATIC "src/cpuid.cpp" "src/x86_shani.cpp"
     "src/md4.cpp"        "src/md5.cpp"        "src/sha1.cpp"        "src/sha256.cpp"        "src/sha512.cpp"
     "src/md4_avx.cpp"    "src/md5_avx.cpp"    "src/sha1_avx.cpp"    "src/sha256_avx.cpp"    "src/sha512_avx.cpp"
     "src/md4_avx2.cpp"   "src/md5_avx2.cpp"   "src/sha1_avx2.cpp"   "src/sha256_avx2.cpp"   "src/sha512_avx2.cpp"

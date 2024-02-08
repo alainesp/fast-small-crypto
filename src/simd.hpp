@@ -1031,9 +1031,9 @@ enum class CpuFeatures : uint32_t {
 	GFNI	   = 1 << 30
 #endif
 };
-static SIMD_INLINE bool operator&(const CpuFeatures lhs, const CpuFeatures rhs) noexcept
+static SIMD_INLINE CpuFeatures operator&(const CpuFeatures lhs, const CpuFeatures rhs) noexcept
 {
-    return static_cast<uint32_t>(lhs) & static_cast<uint32_t>(rhs);
+    return static_cast<CpuFeatures>(static_cast<uint32_t>(lhs) & static_cast<uint32_t>(rhs));
 }
 static SIMD_INLINE CpuFeatures operator|(const CpuFeatures lhs, const CpuFeatures rhs) noexcept
 {
@@ -1048,6 +1048,6 @@ static SIMD_INLINE CpuFeatures operator|=(CpuFeatures& lhs, const CpuFeatures rh
 /// </summary>
 /// <returns>The features of the CPU</returns>
 CpuFeatures get_cpu_features() noexcept;
-static SIMD_INLINE bool cpu_supports(CpuFeatures feature) noexcept { return feature & simd::get_cpu_features(); }
+static SIMD_INLINE bool cpu_supports(CpuFeatures feature) noexcept { return feature == (feature & simd::get_cpu_features()); }
 
 }

@@ -23,6 +23,35 @@ static void BM_sha256_block_PLAIN_C(benchmark::State& _benchmark_state) {
 }
 BENCHMARK(BM_sha256_block_PLAIN_C);
 
+static void BM_sha256_block_SHANI(benchmark::State& _benchmark_state) {
+	if (!simd::cpu_supports(simd::CpuFeatures::SHANI | simd::CpuFeatures::SSE41))
+		_benchmark_state.SkipWithMessage("No SHANI");
+
+	uint32_t state[8];
+	uint32_t W[16];
+	uint32_t num_calls = 0;
+	for (auto _ : _benchmark_state) {
+		sha256_block_shani(state, W);
+		num_calls++;
+	}
+	_benchmark_state.counters["CallRate"] = benchmark::Counter(num_calls * 1, benchmark::Counter::kIsRate);
+}
+BENCHMARK(BM_sha256_block_SHANI);
+static void BM_sha256_block_SHANI_x2(benchmark::State& _benchmark_state) {
+	if (!simd::cpu_supports(simd::CpuFeatures::SHANI | simd::CpuFeatures::SSE41))
+		_benchmark_state.SkipWithMessage("No SHANI");
+
+	uint32_t state[8 * 2];
+	uint32_t W[16 * 2];
+	uint32_t num_calls = 0;
+	for (auto _ : _benchmark_state) {
+		sha256_block_shani_x2(state, W);
+		num_calls++;
+	}
+	_benchmark_state.counters["CallRate"] = benchmark::Counter(num_calls * 2, benchmark::Counter::kIsRate);
+}
+BENCHMARK(BM_sha256_block_SHANI_x2);
+
 static void BM_sha256_block_SSE2(benchmark::State& _benchmark_state) {
 	if (!simd::cpu_supports(simd::CpuFeatures::SSE2))
 		_benchmark_state.SkipWithMessage("No SSE2");
