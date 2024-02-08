@@ -5,6 +5,7 @@
 //
 // Unit Testing
 
+#define _CRT_SECURE_NO_WARNINGS
 #include <gtest/gtest.h>
 #include "sha256.h"
 #include <wy.hpp>
@@ -51,7 +52,6 @@ TEST(sha256, sha256_block_PLAIN_C)
 			ASSERT_EQ(reinterpret_cast<uint32_t*>(W_simd)[j / 16 + (j % 16) * parallelism], W[j]);
     }
 }
-
 TEST(sha256, sha256_block_SHANI)
 {
 	if (!simd::cpu_supports(simd::CpuFeatures::SHANI | simd::CpuFeatures::SSE41))
@@ -85,7 +85,6 @@ TEST(sha256, sha256_block_SHANI)
 		ASSERT_EQ(0, memcmp(state_simd, state, sizeof(state)));
 	}
 }
-
 TEST(sha256, sha256_block_SHANI_x2)
 {
 	if (!simd::cpu_supports(simd::CpuFeatures::SHANI | simd::CpuFeatures::SSE41))
@@ -119,7 +118,6 @@ TEST(sha256, sha256_block_SHANI_x2)
 		ASSERT_EQ(0, memcmp(state_simd, state, sizeof(state)));
 	}
 }
-
 TEST(sha256, sha256_block_SSE2)
 {
 	if (!simd::cpu_supports(simd::CpuFeatures::SSE2))
@@ -283,4 +281,93 @@ TEST(sha256, sha256_block_AVX512)
 		for (size_t j = 0; j < std::size(W); j++)
 			ASSERT_EQ(reinterpret_cast<uint32_t*>(W_simd)[j / 16 + (j % 16) * parallelism], W[j]);
     }
+}
+
+// SHA256 reference
+#include "fsc.cpp"
+static void copy_with_padding(uint8_t message[64], const char* text)
+{
+	size_t text_length = strlen(text);
+	ASSERT_LT(text_length, 56);
+
+	memcpy(message, text, text_length);
+	message[text_length] = 0x80;
+	memset(message + text_length + 1, 0, 64 - text_length - 1);
+	reinterpret_cast<uint32_t*>(message)[15] = static_cast<uint32_t>(text_length) << 3;
+
+	for (uint32_t i = 0; i < 14; i++)
+		reinterpret_cast<uint32_t*>(message)[i] = byteswap32(reinterpret_cast<uint32_t*>(message)[i]);
+}
+TEST(sha256, reference)
+{
+	const uint32_t initial_state[] = { 0x6A09E667, 0xBB67AE85, 0x3C6EF372, 0xA54FF53A, 0x510E527F, 0x9B05688C, 0x1F83D9AB, 0x5BE0CD19 };
+	uint32_t state[8];
+	uint32_t message[16];
+	char hex[65];
+
+	memcpy(state, initial_state, sizeof(initial_state));
+	copy_with_padding(reinterpret_cast<uint8_t*>(message), " ");
+	sha256_transform(state, message);
+	hex[0] = 0;
+	for (uint32_t i = 0; i < 8; i++)
+		sprintf(hex + strlen(hex), "%08X", state[i]);
+	ASSERT_EQ(std::string{ "36A9E7F1C95B82FFB99743E0C5C4CE95D83C9A430AAC59F84EF3CBFAB6145068" }, std::string{ hex });
+
+	memcpy(state, initial_state, sizeof(initial_state));
+	copy_with_padding(reinterpret_cast<uint8_t*>(message), "a");
+	sha256_transform(state, message);
+	hex[0] = 0;
+	for (uint32_t i = 0; i < 8; i++)
+		sprintf(hex + strlen(hex), "%08X", state[i]);
+	ASSERT_EQ(std::string{ "CA978112CA1BBDCAFAC231B39A23DC4DA786EFF8147C4E72B9807785AFEE48BB" }, std::string{ hex });
+
+	memcpy(state, initial_state, sizeof(initial_state));
+	copy_with_padding(reinterpret_cast<uint8_t*>(message), "abc");
+	sha256_transform(state, message);
+	hex[0] = 0;
+	for (uint32_t i = 0; i < 8; i++)
+		sprintf(hex + strlen(hex), "%08X", state[i]);
+	ASSERT_EQ(std::string{ "BA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD" }, std::string{ hex });
+
+	memcpy(state, initial_state, sizeof(initial_state));
+	copy_with_padding(reinterpret_cast<uint8_t*>(message), "message digest");
+	sha256_transform(state, message);
+	hex[0] = 0;
+	for (uint32_t i = 0; i < 8; i++)
+		sprintf(hex + strlen(hex), "%08X", state[i]);
+	ASSERT_EQ(std::string{ "F7846F55CF23E14EEBEAB5B4E1550CAD5B509E3348FBC4EFA3A1413D393CB650" }, std::string{ hex });
+
+	memcpy(state, initial_state, sizeof(initial_state));
+	copy_with_padding(reinterpret_cast<uint8_t*>(message), "abcdefghijklmnopqrstuvwxyz");
+	sha256_transform(state, message);
+	hex[0] = 0;
+	for (uint32_t i = 0; i < 8; i++)
+		sprintf(hex + strlen(hex), "%08X", state[i]);
+	ASSERT_EQ(std::string{ "71C480DF93D6AE2F1EFAD1447C66C9525E316218CF51FC8D9ED832F2DAF18B73" }, std::string{ hex });
+
+	memcpy(state, initial_state, sizeof(initial_state));
+	memcpy(message, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789\x80\x00", 64);
+	for (uint32_t i = 0; i < 16; i++)
+		message[i] = byteswap32(message[i]);
+	sha256_transform(state, message);
+	memset(message, 0, 64);
+	message[15] = 62 << 3;
+	sha256_transform(state, message);
+	hex[0] = 0;
+	for (uint32_t i = 0; i < 8; i++)
+		sprintf(hex + strlen(hex), "%08X", state[i]);
+	ASSERT_EQ(std::string{ "DB4BFCBD4DA0CD85A60C3C37D3FBD8805C77F15FC6B1FDFE614EE0A7C8FDB4C0" }, std::string{ hex });
+
+	memcpy(state, initial_state, sizeof(initial_state));
+	memcpy(message, "1234567890123456789012345678901234567890123456789012345678901234", 64);
+	for (uint32_t i = 0; i < 16; i++)
+		message[i] = byteswap32(message[i]);
+	sha256_transform(state, message);
+	copy_with_padding(reinterpret_cast<uint8_t*>(message), "5678901234567890");
+	message[15] = 80 << 3;
+	sha256_transform(state, message);
+	hex[0] = 0;
+	for (uint32_t i = 0; i < 8; i++)
+		sprintf(hex + strlen(hex), "%08X", state[i]);
+	ASSERT_EQ(std::string{ "F371BC4A311F2B009EEF952DD83CA80E2B60026C8E935592D0F9C308453C813E" }, std::string{ hex });
 }
