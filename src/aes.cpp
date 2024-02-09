@@ -15,12 +15,7 @@
 #include <cassert>
 #include "aes.h"
 
-// state - array holding the intermediate results during decryption.
-typedef uint8_t state_t[4][4];
-
-// The lookup-tables are marked const so they can be placed in read-only storage instead of RAM
-// The numbers below can be computed dynamically trading ROM for RAM - 
-// This can be useful in (embedded) bootloader applications, where ROM is often limited.
+// The sboxes
 static const uint8_t sbox[256] = {
     //0     1    2      3     4    5     6     7      8    9     A      B    C     D     E     F
     0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
@@ -73,70 +68,56 @@ static const uint8_t Rcon[11] = { 0x8d, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40
  */
 
 // This function produces 4*(Nr+1) round keys. The round keys are used in each round to decrypt the states. 
-static void KeyExpansion(uint8_t* RoundKey, const uint8_t* Key, unsigned Nk, unsigned Nr) noexcept
+static void KeyExpansion(uint8_t* RoundKey, const uint8_t* Key, const unsigned Nk, const unsigned Nr) noexcept
 {
     uint8_t tempa[4]; // Used for the column/row operations
 
     // The first round key is the key itself.
-    for (unsigned i = 0; i < Nk; ++i)
-    {
-        RoundKey[(i * 4) + 0] = Key[(i * 4) + 0];
-        RoundKey[(i * 4) + 1] = Key[(i * 4) + 1];
-        RoundKey[(i * 4) + 2] = Key[(i * 4) + 2];
-        RoundKey[(i * 4) + 3] = Key[(i * 4) + 3];
-    }
+    memcpy(RoundKey, Key, 4 * Nk);
 
     // All other round keys are found from the previous round keys.
     for (unsigned i = Nk; i < 4 * (Nr + 1); ++i)
     {
-        {
-            unsigned k = (i - 1) * 4;
-            tempa[0] = RoundKey[k + 0];
-            tempa[1] = RoundKey[k + 1];
-            tempa[2] = RoundKey[k + 2];
-            tempa[3] = RoundKey[k + 3];
-        }
+        unsigned k = (i - 1) * 4;
+        tempa[0] = RoundKey[k + 0];
+        tempa[1] = RoundKey[k + 1];
+        tempa[2] = RoundKey[k + 2];
+        tempa[3] = RoundKey[k + 3];
 
         if (i % Nk == 0)
         {
             // This function shifts the 4 bytes in a word to the left once.
             // [a0,a1,a2,a3] becomes [a1,a2,a3,a0]
             // Function RotWord()
-            {
-                const uint8_t u8tmp = tempa[0];
-                tempa[0] = tempa[1];
-                tempa[1] = tempa[2];
-                tempa[2] = tempa[3];
-                tempa[3] = u8tmp;
-            }
+            const uint8_t u8tmp = tempa[0];
+            tempa[0] = tempa[1];
+            tempa[1] = tempa[2];
+            tempa[2] = tempa[3];
+            tempa[3] = u8tmp;
 
             // SubWord() is a function that takes a four-byte input word and 
             // applies the S-box to each of the four bytes to produce an output word.
 
             // Function Subword()
-            {
-                tempa[0] = sbox[tempa[0]];
-                tempa[1] = sbox[tempa[1]];
-                tempa[2] = sbox[tempa[2]];
-                tempa[3] = sbox[tempa[3]];
-            }
+            tempa[0] = sbox[tempa[0]];
+            tempa[1] = sbox[tempa[1]];
+            tempa[2] = sbox[tempa[2]];
+            tempa[3] = sbox[tempa[3]];
 
-            tempa[0] = tempa[0] ^ Rcon[i / Nk];
+            tempa[0] ^= Rcon[i / Nk];
         }
 //#if defined(AES256) && (AES256 == 1)
         if (Nk == 8 && i % Nk == 4)
         {
             // Function Subword()
-            {
-                tempa[0] = sbox[tempa[0]];
-                tempa[1] = sbox[tempa[1]];
-                tempa[2] = sbox[tempa[2]];
-                tempa[3] = sbox[tempa[3]];
-            }
+            tempa[0] = sbox[tempa[0]];
+            tempa[1] = sbox[tempa[1]];
+            tempa[2] = sbox[tempa[2]];
+            tempa[3] = sbox[tempa[3]];
         }
 //#endif
         unsigned j = i * 4;
-        unsigned k = (i - Nk) * 4;
+        k = (i - Nk) * 4;
         RoundKey[j + 0] = RoundKey[k + 0] ^ tempa[0];
         RoundKey[j + 1] = RoundKey[k + 1] ^ tempa[1];
         RoundKey[j + 2] = RoundKey[k + 2] ^ tempa[2];
@@ -144,80 +125,77 @@ static void KeyExpansion(uint8_t* RoundKey, const uint8_t* Key, unsigned Nk, uns
     }
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-// AES main algorithm
-/////////////////////////////////////////////////////////////////////////////////
 static uint8_t xtime(uint8_t x) noexcept
 {
     return ((x << 1) ^ (((x >> 7) & 1) * 0x1b));
 }
 
 // Cipher is the main function that encrypts the PlainText.
-static void Cipher(state_t* state, const uint8_t* RoundKey, const uint8_t Nr) noexcept
+static void Cipher(uint8_t state[AES_BLOCKLEN], const uint8_t* RoundKey, const uint8_t Nr) noexcept
 {
     // Add the First round key to the state before starting the rounds.
-    for (uint8_t i = 0; i < AES_BLOCKLEN; ++i)
-        ((uint8_t*)state)[i] ^= RoundKey[i];
+    for (uint8_t i = 0; i < AES_BLOCKLEN; i++)
+        state[i] ^= RoundKey[i];
 
     // There will be Nr rounds.
     // The first Nr-1 rounds are identical.
     // These Nr rounds are executed in the loop below.
     // Last one without MixColumns()
-    for (uint8_t round = 1; ; ++round)
+    for (uint8_t round = 1; ; round++)
     {
         // SubBytes substitutes the values in the state matrix with values in an S-box.
-        for (uint8_t i = 0; i < AES_BLOCKLEN; ++i)
-            ((uint8_t*)state)[i] = sbox[((uint8_t*)state)[i]];
+        for (uint8_t i = 0; i < AES_BLOCKLEN; i++)
+            state[i] = sbox[state[i]];
 
+        ///////////////////////////////////////////////////////////////////////
         // ShiftRows() shifts the rows in the state to the left.
         // Each row is shifted with different offset.
         // Offset = Row number. So the first row is not shifted.
-        {
-            // Rotate first row 1 columns to left  
-            uint8_t temp   = (*state)[0][1];
-            (*state)[0][1] = (*state)[1][1];
-            (*state)[1][1] = (*state)[2][1];
-            (*state)[2][1] = (*state)[3][1];
-            (*state)[3][1] = temp;
+        ///////////////////////////////////////////////////////////////////////
+        // Rotate first row 1 columns to left  
+        uint8_t t = state[ 1];
+        state[ 1] = state[ 5];
+        state[ 5] = state[ 9];
+        state[ 9] = state[13];
+        state[13] = t;
 
-            // Rotate second row 2 columns to left  
-            temp           = (*state)[0][2];
-            (*state)[0][2] = (*state)[2][2];
-            (*state)[2][2] = temp;
+        // Rotate second row 2 columns to left  
+        t         = state[ 2];
+        state[ 2] = state[10];
+        state[10] = t;
 
-            temp           = (*state)[1][2];
-            (*state)[1][2] = (*state)[3][2];
-            (*state)[3][2] = temp;
+        t         = state[ 6];
+        state[ 6] = state[14];
+        state[14] = t;
 
-            // Rotate third row 3 columns to left
-            temp           = (*state)[0][3];
-            (*state)[0][3] = (*state)[3][3];
-            (*state)[3][3] = (*state)[2][3];
-            (*state)[2][3] = (*state)[1][3];
-            (*state)[1][3] = temp;
-        }
+        // Rotate third row 3 columns to left
+        t         = state[ 3];
+        state[ 3] = state[15];
+        state[15] = state[11];
+        state[11] = state[ 7];
+        state[ 7] = t;
+
         if (round == Nr)
             break;
 
         // MixColumns function mixes the columns of the state matrix
+        uint8_t Tmp, Tm;
+        for (uint8_t i = 0; i < 16; i += 4)
         {
-            uint8_t Tmp, Tm, t;
-            for (uint8_t i = 0; i < 4; ++i)
-            {
-                t   = (*state)[i][0];
-                Tmp = (*state)[i][0] ^ (*state)[i][1] ^ (*state)[i][2] ^ (*state)[i][3];
-                Tm  = (*state)[i][0] ^ (*state)[i][1]; Tm = xtime(Tm);  (*state)[i][0] ^= Tm ^ Tmp;
-                Tm  = (*state)[i][1] ^ (*state)[i][2]; Tm = xtime(Tm);  (*state)[i][1] ^= Tm ^ Tmp;
-                Tm  = (*state)[i][2] ^ (*state)[i][3]; Tm = xtime(Tm);  (*state)[i][2] ^= Tm ^ Tmp;
-                Tm  = (*state)[i][3] ^ t;              Tm = xtime(Tm);  (*state)[i][3] ^= Tm ^ Tmp;
-            }
+            t   = state[i + 0];
+            Tmp = state[i + 0] ^ state[i + 1] ^ state[i + 2] ^  state[i + 3];
+            Tm  = state[i + 0] ^ state[i + 1]; Tm = xtime(Tm);  state[i + 0] ^= Tm ^ Tmp;
+            Tm  = state[i + 1] ^ state[i + 2]; Tm = xtime(Tm);  state[i + 1] ^= Tm ^ Tmp;
+            Tm  = state[i + 2] ^ state[i + 3]; Tm = xtime(Tm);  state[i + 2] ^= Tm ^ Tmp;
+            Tm  = state[i + 3] ^ t;            Tm = xtime(Tm);  state[i + 3] ^= Tm ^ Tmp;
         }
+
         for (uint8_t i = 0; i < AES_BLOCKLEN; ++i)
-            ((uint8_t*)state)[i] ^= RoundKey[round * 16 + i];
+            state[i] ^= RoundKey[round * 16 + i];
     }
     // Add round key to last round
-    for (uint8_t i = 0; i < AES_BLOCKLEN; ++i)
-        ((uint8_t*)state)[i] ^= RoundKey[Nr * 16 + i];
+    for (uint8_t i = 0; i < AES_BLOCKLEN; i++)
+        state[i] ^= RoundKey[Nr * 16 + i];
 }
 
 
@@ -244,64 +222,62 @@ static uint8_t Multiply(uint8_t x, uint8_t y) noexcept
 
 #endif
 
-static void InvCipher(state_t* state, const uint8_t* RoundKey, unsigned Nr) noexcept
+static void InvCipher(uint8_t state[AES_BLOCKLEN], const uint8_t* RoundKey, unsigned Nr) noexcept
 {
     // Add the First round key to the state before starting the rounds.
-    for (uint8_t i = 0; i < AES_BLOCKLEN; ++i)
-        ((uint8_t*)state)[i] ^= RoundKey[Nr * 16 + i];
+    for (uint8_t i = 0; i < AES_BLOCKLEN; i++)
+        state[i] ^= RoundKey[Nr * 16 + i];
 
     // There will be Nr rounds.
     // The first Nr-1 rounds are identical.
     // These Nr rounds are executed in the loop below.
     // Last one without InvMixColumn()
-    for (uint8_t round = (Nr - 1); ; --round)
+    for (uint8_t round = (Nr - 1); ; round--)
     {
         //InvShiftRows(state);
-        {
-            // Rotate first row 1 columns to right  
-            uint8_t temp   = (*state)[3][1];
-            (*state)[3][1] = (*state)[2][1];
-            (*state)[2][1] = (*state)[1][1];
-            (*state)[1][1] = (*state)[0][1];
-            (*state)[0][1] = temp;
+        // Rotate first row 1 columns to right  
+        uint8_t t = state[13];
+        state[13] = state[ 9];
+        state[ 9] = state[ 5];
+        state[ 5] = state[ 1];
+        state[ 1] = t;
 
-            // Rotate second row 2 columns to right 
-            temp           = (*state)[0][2];
-            (*state)[0][2] = (*state)[2][2];
-            (*state)[2][2] = temp;
+        // Rotate second row 2 columns to right 
+        t         = state[ 2];
+        state[ 2] = state[10];
+        state[10] = t;
 
-            temp           = (*state)[1][2];
-            (*state)[1][2] = (*state)[3][2];
-            (*state)[3][2] = temp;
+        t         = state[ 6];
+        state[ 6] = state[14];
+        state[14] = t;
 
-            // Rotate third row 3 columns to right
-            temp           = (*state)[0][3];
-            (*state)[0][3] = (*state)[1][3];
-            (*state)[1][3] = (*state)[2][3];
-            (*state)[2][3] = (*state)[3][3];
-            (*state)[3][3] = temp;
-        }
+        // Rotate third row 3 columns to right
+        t         = state[ 3];
+        state[ 3] = state[ 7];
+        state[ 7] = state[11];
+        state[11] = state[15];
+        state[15] = t;
 
         // SubBytes() + AddRoundKey() substitutes the values in the state matrix with values in an S-box.
-        for (uint8_t i = 0; i < AES_BLOCKLEN; ++i)
-            ((uint8_t*)state)[i] = rsbox[((uint8_t*)state)[i]] ^ RoundKey[round * 16 + i];
+        for (uint8_t i = 0; i < AES_BLOCKLEN; i++)
+            state[i] = rsbox[state[i]] ^ RoundKey[round * 16 + i];
         if (round == 0)
             break;
 
         // MixColumns() mixes the columns of the state matrix.
         // The method used to multiply may be difficult to understand for the inexperienced.
         // Please use the references to gain more information.
-        for (int i = 0; i < 4; ++i)
+        for (int i = 0; i < 16; i += 4)
         {
-            uint8_t a = (*state)[i][0];
-            uint8_t b = (*state)[i][1];
-            uint8_t c = (*state)[i][2];
-            uint8_t d = (*state)[i][3];
+            uint8_t a = state[i + 0];
+            uint8_t b = state[i + 1];
+            uint8_t c = state[i + 2];
+            uint8_t d = state[i + 3];
 
-            (*state)[i][0] = Multiply(a, 0x0e) ^ Multiply(b, 0x0b) ^ Multiply(c, 0x0d) ^ Multiply(d, 0x09);
-            (*state)[i][1] = Multiply(a, 0x09) ^ Multiply(b, 0x0e) ^ Multiply(c, 0x0b) ^ Multiply(d, 0x0d);
-            (*state)[i][2] = Multiply(a, 0x0d) ^ Multiply(b, 0x09) ^ Multiply(c, 0x0e) ^ Multiply(d, 0x0b);
-            (*state)[i][3] = Multiply(a, 0x0b) ^ Multiply(b, 0x0d) ^ Multiply(c, 0x09) ^ Multiply(d, 0x0e);
+            state[i + 0] = Multiply(a, 0x0e) ^ Multiply(b, 0x0b) ^ Multiply(c, 0x0d) ^ Multiply(d, 0x09);
+            state[i + 1] = Multiply(a, 0x09) ^ Multiply(b, 0x0e) ^ Multiply(c, 0x0b) ^ Multiply(d, 0x0d);
+            state[i + 2] = Multiply(a, 0x0d) ^ Multiply(b, 0x09) ^ Multiply(c, 0x0e) ^ Multiply(d, 0x0b);
+            state[i + 3] = Multiply(a, 0x0b) ^ Multiply(b, 0x0d) ^ Multiply(c, 0x09) ^ Multiply(d, 0x0e);
         }
     }
 }
@@ -327,7 +303,7 @@ void AES_ECB_encrypt(uint8_t* data, const size_t data_length, const uint8_t* key
     uint8_t round_key[AES256_keyExpSize];
     KeyExpansion(round_key, key, Nk, Nr);
     for (size_t i = 0; i < data_length; i += AES_BLOCKLEN)
-        Cipher((state_t*)(data + i), round_key, Nr);
+        Cipher(data + i, round_key, Nr);
 }
 void AES_ECB_decrypt(uint8_t* data, const size_t data_length, const uint8_t* key, const uint8_t key_length) noexcept
 {
@@ -340,7 +316,7 @@ void AES_ECB_decrypt(uint8_t* data, const size_t data_length, const uint8_t* key
     uint8_t round_key[AES256_keyExpSize];
     KeyExpansion(round_key, key, Nk, Nr);
     for (size_t i = 0; i < data_length; i += AES_BLOCKLEN)
-        InvCipher((state_t*)(data + i), round_key, Nr);
+        InvCipher(data + i, round_key, Nr);
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -369,7 +345,7 @@ void AES_CBC_encrypt(uint8_t* data, const size_t data_length, const uint8_t* key
     for (size_t i = 0; i < data_length; i += AES_BLOCKLEN)
     {
         XorWithIv(data, current_iv);
-        Cipher((state_t*)data, round_key, Nr);
+        Cipher(data, round_key, Nr);
         current_iv = data;
         data += AES_BLOCKLEN;
     }
@@ -393,7 +369,7 @@ void AES_CBC_decrypt(uint8_t* data, const size_t data_length, const uint8_t* key
     for (size_t i = 0; i < data_length; i += AES_BLOCKLEN)
     {
         memcpy(storeNextIv, data, AES_BLOCKLEN);
-        InvCipher((state_t*)data, round_key, Nr);
+        InvCipher(data, round_key, Nr);
         XorWithIv(data, ctx_iv);
         memcpy(ctx_iv, storeNextIv, AES_BLOCKLEN);
         data += AES_BLOCKLEN;
@@ -430,7 +406,7 @@ void AES_CTR_xcrypt(uint8_t* data, const size_t data_length, const uint8_t* key,
         if (bi == AES_BLOCKLEN) /* we need to regen xor compliment in buffer */
         {
             memcpy(buffer, ctx_iv, AES_BLOCKLEN);
-            Cipher((state_t*)buffer, round_key, Nr);
+            Cipher(buffer, round_key, Nr);
 
             /* Increment Iv and handle overflow */
             for (bi = (AES_BLOCKLEN - 1); bi >= 0; --bi)
