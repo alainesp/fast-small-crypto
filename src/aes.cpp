@@ -11,7 +11,7 @@
 //		- CTR enables encryption in counter-mode.
 //		- ECB enables the basic ECB 16-byte block algorithm. All can be enabled simultaneously.
 
-#include <string>
+#include <cstring>
 #include <cassert>
 #include "aes.h"
 
@@ -77,7 +77,7 @@ static const uint8_t Rcon[11] = { 0x8d, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40
  */
 
 // This function produces Nb(Nr+1) round keys. The round keys are used in each round to decrypt the states. 
-static void KeyExpansion(uint8_t* RoundKey, const uint8_t* Key, unsigned Nk, unsigned Nr)
+static void KeyExpansion(uint8_t* RoundKey, const uint8_t* Key, unsigned Nk, unsigned Nr) noexcept
 {
     unsigned i, j, k;
     uint8_t tempa[4]; // Used for the column/row operations
@@ -154,7 +154,7 @@ static void KeyExpansion(uint8_t* RoundKey, const uint8_t* Key, unsigned Nk, uns
 /////////////////////////////////////////////////////////////////////////////////
 // This function adds the round key to state.
 // The round key is added to the state by an XOR function.
-static void AddRoundKey(uint8_t round, state_t* state, const uint8_t* RoundKey)
+static void AddRoundKey(uint8_t round, state_t* state, const uint8_t* RoundKey) noexcept
 {
     for (uint8_t i = 0; i < 4; ++i)
         for (uint8_t j = 0; j < 4; ++j)
@@ -165,7 +165,7 @@ static void AddRoundKey(uint8_t round, state_t* state, const uint8_t* RoundKey)
 
 // The SubBytes Function Substitutes the values in the
 // state matrix with values in an S-box.
-static void SubBytes(state_t* state)
+static void SubBytes(state_t* state) noexcept
 {
     for (uint8_t i = 0; i < 4; ++i)
         for (uint8_t j = 0; j < 4; ++j)
@@ -176,7 +176,7 @@ static void SubBytes(state_t* state)
 // The ShiftRows() function shifts the rows in the state to the left.
 // Each row is shifted with different offset.
 // Offset = Row number. So the first row is not shifted.
-static void ShiftRows(state_t* state)
+static void ShiftRows(state_t* state) noexcept
 {
     uint8_t temp;
 
@@ -204,13 +204,13 @@ static void ShiftRows(state_t* state)
     (*state)[1][3] = temp;
 }
 
-static uint8_t xtime(uint8_t x)
+static uint8_t xtime(uint8_t x) noexcept
 {
     return ((x << 1) ^ (((x >> 7) & 1) * 0x1b));
 }
 
 // MixColumns function mixes the columns of the state matrix
-static void MixColumns(state_t* state)
+static void MixColumns(state_t* state) noexcept
 {
     uint8_t Tmp, Tm, t;
     for (uint8_t i = 0; i < 4; ++i)
@@ -225,7 +225,7 @@ static void MixColumns(state_t* state)
 }
 
 // Cipher is the main function that encrypts the PlainText.
-static void Cipher(state_t* state, const uint8_t* RoundKey, uint8_t Nr)
+static void Cipher(state_t* state, const uint8_t* RoundKey, uint8_t Nr) noexcept
 {
     uint8_t round = 0;
 
@@ -256,7 +256,7 @@ static void Cipher(state_t* state, const uint8_t* RoundKey, uint8_t Nr)
 //       The compiler seems to be able to vectorize the operation better this way.
 //       See https://github.com/kokke/tiny-AES-c/pull/34
 #if MULTIPLY_AS_A_FUNCTION
-static uint8_t Multiply(uint8_t x, uint8_t y)
+static uint8_t Multiply(uint8_t x, uint8_t y) noexcept
 {
     return (((y & 1) * x) ^
         ((y >> 1 & 1) * xtime(x)) ^
@@ -276,7 +276,7 @@ static uint8_t Multiply(uint8_t x, uint8_t y)
 // MixColumns function mixes the columns of the state matrix.
 // The method used to multiply may be difficult to understand for the inexperienced.
 // Please use the references to gain more information.
-static void InvMixColumns(state_t* state)
+static void InvMixColumns(state_t* state) noexcept
 {
     int i;
     uint8_t a, b, c, d;
@@ -297,7 +297,7 @@ static void InvMixColumns(state_t* state)
 
 // The SubBytes Function Substitutes the values in the
 // state matrix with values in an S-box.
-static void InvSubBytes(state_t* state)
+static void InvSubBytes(state_t* state) noexcept
 {
     for (uint8_t i = 0; i < 4; ++i)
         for (uint8_t j = 0; j < 4; ++j)
@@ -306,7 +306,7 @@ static void InvSubBytes(state_t* state)
         }
 }
 
-static void InvShiftRows(state_t* state)
+static void InvShiftRows(state_t* state) noexcept
 {
     uint8_t temp;
 
@@ -333,7 +333,7 @@ static void InvShiftRows(state_t* state)
     (*state)[2][3] = (*state)[3][3];
     (*state)[3][3] = temp;
 }
-static void InvCipher(state_t* state, const uint8_t* RoundKey, unsigned Nr)
+static void InvCipher(state_t* state, const uint8_t* RoundKey, unsigned Nr) noexcept
 {
     uint8_t round = 0;
 
@@ -374,10 +374,10 @@ void AES_ECB_encrypt(uint8_t* data, const size_t data_length, const uint8_t* key
     unsigned Nk = key_length / sizeof(uint32_t); // The number of 32 bit words in a key.
     unsigned Nr = Nk + 6;                        // The number of rounds in AES Cipher.
 
-    uint8_t RoundKey[AES256_keyExpSize];
-    KeyExpansion(RoundKey, key, Nk, Nr);
+    uint8_t round_key[AES256_keyExpSize];
+    KeyExpansion(round_key, key, Nk, Nr);
     for (size_t i = 0; i < data_length; i += AES_BLOCKLEN)
-        Cipher((state_t*)(data + i), RoundKey, Nr);
+        Cipher((state_t*)(data + i), round_key, Nr);
 }
 void AES_ECB_decrypt(uint8_t* data, const size_t data_length, const uint8_t* key, const uint8_t key_length) noexcept
 {
@@ -387,16 +387,16 @@ void AES_ECB_decrypt(uint8_t* data, const size_t data_length, const uint8_t* key
     unsigned Nk = key_length / sizeof(uint32_t); // The number of 32 bit words in a key.
     unsigned Nr = Nk + 6;                        // The number of rounds in AES Cipher.
 
-    uint8_t RoundKey[AES256_keyExpSize];
-    KeyExpansion(RoundKey, key, Nk, Nr);
+    uint8_t round_key[AES256_keyExpSize];
+    KeyExpansion(round_key, key, Nk, Nr);
     for (size_t i = 0; i < data_length; i += AES_BLOCKLEN)
-        InvCipher((state_t*)(data + i), RoundKey, Nr);
+        InvCipher((state_t*)(data + i), round_key, Nr);
 }
 
 /////////////////////////////////////////////////////////////////////////////////
 // CBC
 /////////////////////////////////////////////////////////////////////////////////
-static void XorWithIv(uint8_t* buf, const uint8_t* Iv)
+static void XorWithIv(uint8_t* buf, const uint8_t* Iv) noexcept
 {
     for (uint8_t i = 0; i < AES_BLOCKLEN; ++i) // The block in AES is always 128bit no matter the key size
         buf[i] ^= Iv[i];
@@ -412,21 +412,19 @@ void AES_CBC_encrypt(uint8_t* data, const size_t data_length, const uint8_t* key
     unsigned Nk = key_length / sizeof(uint32_t); // The number of 32 bit words in a key.
     unsigned Nr = Nk + 6;                        // The number of rounds in AES Cipher.
 
-    uint8_t RoundKey[AES256_keyExpSize];
-    uint8_t ctx_iv[AES_BLOCKLEN];
-    KeyExpansion(RoundKey, key, Nk, Nr);
-    memcpy(ctx_iv, iv, AES_BLOCKLEN);
+    uint8_t round_key[AES256_keyExpSize];
+    KeyExpansion(round_key, key, Nk, Nr);
 
-    const uint8_t* Iv = ctx_iv;
+    const uint8_t* current_iv = iv;
     for (size_t i = 0; i < data_length; i += AES_BLOCKLEN)
     {
-        XorWithIv(data, Iv);
-        Cipher((state_t*)data, RoundKey, Nr);
-        Iv = data;
+        XorWithIv(data, current_iv);
+        Cipher((state_t*)data, round_key, Nr);
+        current_iv = data;
         data += AES_BLOCKLEN;
     }
     /* store Iv in ctx for next call */
-    //memcpy(ctx_iv, Iv, AES_BLOCKLEN);
+    //memcpy(ctx_iv, current_iv, AES_BLOCKLEN);
 }
 void AES_CBC_decrypt(uint8_t* data, const size_t data_length, const uint8_t* key, const uint8_t key_length, const uint8_t iv[AES_BLOCKLEN]) noexcept
 {
@@ -436,16 +434,16 @@ void AES_CBC_decrypt(uint8_t* data, const size_t data_length, const uint8_t* key
     unsigned Nk = key_length / sizeof(uint32_t); // The number of 32 bit words in a key.
     unsigned Nr = Nk + 6;                        // The number of rounds in AES Cipher.
 
-    uint8_t RoundKey[AES256_keyExpSize];
+    uint8_t round_key[AES256_keyExpSize];
     uint8_t ctx_iv[AES_BLOCKLEN];
-    KeyExpansion(RoundKey, key, Nk, Nr);
+    KeyExpansion(round_key, key, Nk, Nr);
     memcpy(ctx_iv, iv, AES_BLOCKLEN);
 
     uint8_t storeNextIv[AES_BLOCKLEN];
     for (size_t i = 0; i < data_length; i += AES_BLOCKLEN)
     {
         memcpy(storeNextIv, data, AES_BLOCKLEN);
-        InvCipher((state_t*)data, RoundKey, Nr);
+        InvCipher((state_t*)data, round_key, Nr);
         XorWithIv(data, ctx_iv);
         memcpy(ctx_iv, storeNextIv, AES_BLOCKLEN);
         data += AES_BLOCKLEN;
@@ -467,9 +465,9 @@ void AES_CTR_xcrypt(uint8_t* data, const size_t data_length, const uint8_t* key,
     unsigned Nk = key_length / sizeof(uint32_t); // The number of 32 bit words in a key.
     unsigned Nr = Nk + 6;                        // The number of rounds in AES Cipher.
 
-    uint8_t RoundKey[AES256_keyExpSize];
+    uint8_t round_key[AES256_keyExpSize];
     uint8_t ctx_iv[AES_BLOCKLEN];
-    KeyExpansion(RoundKey, key, Nk, Nr);
+    KeyExpansion(round_key, key, Nk, Nr);
     memcpy(ctx_iv, iv, AES_BLOCKLEN);
 
 
@@ -482,7 +480,7 @@ void AES_CTR_xcrypt(uint8_t* data, const size_t data_length, const uint8_t* key,
         if (bi == AES_BLOCKLEN) /* we need to regen xor compliment in buffer */
         {
             memcpy(buffer, ctx_iv, AES_BLOCKLEN);
-            Cipher((state_t*)buffer, RoundKey, Nr);
+            Cipher((state_t*)buffer, round_key, Nr);
 
             /* Increment Iv and handle overflow */
             for (bi = (AES_BLOCKLEN - 1); bi >= 0; --bi)

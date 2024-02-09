@@ -171,7 +171,7 @@ static void aes_load_tests_from_directory(const std::string& dir, int repeated) 
 
 					if (line.starts_with("PLAINTEXT = "))
 					{
-						plaintext_size = (line.size() - 12) / 2;
+						plaintext_size = static_cast<int>((line.size() - 12) / 2);
 						ASSERT_EQ(0, plaintext_size % AES_BLOCKLEN);
 						ASSERT_LE(plaintext_size, sizeof(plaintext));
 
@@ -181,7 +181,7 @@ static void aes_load_tests_from_directory(const std::string& dir, int repeated) 
 
 					if (line.starts_with("CIPHERTEXT = "))
 					{
-						ciphertext_size = (line.size() - 13) / 2;
+						ciphertext_size = static_cast<int>((line.size() - 13) / 2);
 						ASSERT_EQ(0, ciphertext_size % AES_BLOCKLEN);
 						ASSERT_LE(ciphertext_size, sizeof(ciphertext));
 
