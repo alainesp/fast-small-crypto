@@ -43,7 +43,7 @@ elseif(MSVC)
     set_source_files_properties("src/x86_shani.cpp" PROPERTIES COMPILE_FLAGS /arch:SSE2)
 endif()
 
-add_library(FSC STATIC "src/cpuid.cpp" "src/x86_shani.cpp"
+add_library(FSC STATIC "src/cpuid.cpp" "src/x86_shani.cpp" "src/aes.cpp"
     "src/md4.cpp"        "src/md5.cpp"        "src/sha1.cpp"        "src/sha256.cpp"        "src/sha512.cpp"
     "src/md4_avx.cpp"    "src/md5_avx.cpp"    "src/sha1_avx.cpp"    "src/sha256_avx.cpp"    "src/sha512_avx.cpp"
     "src/md4_avx2.cpp"   "src/md5_avx2.cpp"   "src/sha1_avx2.cpp"   "src/sha256_avx2.cpp"   "src/sha512_avx2.cpp"
@@ -88,7 +88,8 @@ endif()
 
     enable_testing()
 
-    add_executable(runUnitTests "tests/general.cpp" "tests/md4.cpp" "tests/md5.cpp" "tests/sha1.cpp" "tests/sha256.cpp" "tests/sha512.cpp")
+    add_executable(runUnitTests "tests/general.cpp" "tests/md4.cpp" "tests/md5.cpp" "tests/sha1.cpp" "tests/sha256.cpp" "tests/sha512.cpp" "tests/aes.cpp")
+    target_compile_definitions(runUnitTests PRIVATE TEST_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/")
     set_target_properties(runUnitTests PROPERTIES CXX_STANDARD 20 INTERPROCEDURAL_OPTIMIZATION TRUE)
     target_link_libraries(runUnitTests PRIVATE FSC gtest_main wy)
 
@@ -106,7 +107,7 @@ endif()
 #endif()
 
 if(FSC_BUILD_BENCHMARK)
-    add_executable(fsc-benchmark "benchmark/md4.cpp" "benchmark/md5.cpp" "benchmark/sha1.cpp" "benchmark/sha256.cpp" "benchmark/sha512.cpp")
+    add_executable(fsc-benchmark "benchmark/md4.cpp" "benchmark/md5.cpp" "benchmark/sha1.cpp" "benchmark/sha256.cpp" "benchmark/sha512.cpp" "benchmark/aes.cpp")
     set_target_properties(fsc-benchmark PROPERTIES CXX_STANDARD 20 INTERPROCEDURAL_OPTIMIZATION TRUE)
 
     FetchContent_Declare(benchmark URL https://github.com/google/benchmark/archive/refs/tags/v1.8.3.zip)
