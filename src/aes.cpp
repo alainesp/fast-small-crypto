@@ -1,8 +1,8 @@
-/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // This file is part of 'Fast-Small-Crypto'
 // 
 // Copyright (c) 2024 by Alain Espinosa.
-/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // 
 // AES supported sizes: 128, 192, 256
 // 
@@ -275,62 +275,60 @@ static void key_expansion_decryption(uint32_t* RK, const uint8_t* key, const uns
 
 static void encrypt_block(uint8_t state[AES_BLOCKLEN], const uint32_t* RK, const uint8_t num_rounds) noexcept
 {
-    uint32_t X[4];
-    uint32_t Y[4];
+    uint32_t X0, X1, X2, X3, Y0, Y1, Y2, Y3;
 
-    X[0] = GET_UINT32_LE(state +  0); X[0] ^= *RK++;
-    X[1] = GET_UINT32_LE(state +  4); X[1] ^= *RK++;
-    X[2] = GET_UINT32_LE(state +  8); X[2] ^= *RK++;
-    X[3] = GET_UINT32_LE(state + 12); X[3] ^= *RK++;
+    X0 = GET_UINT32_LE(state +  0); X0 ^= *RK++;
+    X1 = GET_UINT32_LE(state +  4); X1 ^= *RK++;
+    X2 = GET_UINT32_LE(state +  8); X2 ^= *RK++;
+    X3 = GET_UINT32_LE(state + 12); X3 ^= *RK++;
 
     for (int i = (num_rounds >> 1) - 1; i > 0; i--) {
-        AES_FROUND(Y[0], Y[1], Y[2], Y[3], X[0], X[1], X[2], X[3]);
-        AES_FROUND(X[0], X[1], X[2], X[3], Y[0], Y[1], Y[2], Y[3]);
+        AES_FROUND(Y0, Y1, Y2, Y3, X0, X1, X2, X3);
+        AES_FROUND(X0, X1, X2, X3, Y0, Y1, Y2, Y3);
     }
 
-    AES_FROUND(Y[0], Y[1], Y[2], Y[3], X[0], X[1], X[2], X[3]);
+    AES_FROUND(Y0, Y1, Y2, Y3, X0, X1, X2, X3);
 
-    X[0] = *RK++ ^ ((uint32_t)FSb[Y[0] & 0xff]) ^ ((uint32_t)FSb[(Y[1] >> 8) & 0xff] << 8) ^ ((uint32_t)FSb[(Y[2] >> 16) & 0xff] << 16) ^ ((uint32_t)FSb[Y[3] >> 24] << 24);
-    X[1] = *RK++ ^ ((uint32_t)FSb[Y[1] & 0xff]) ^ ((uint32_t)FSb[(Y[2] >> 8) & 0xff] << 8) ^ ((uint32_t)FSb[(Y[3] >> 16) & 0xff] << 16) ^ ((uint32_t)FSb[Y[0] >> 24] << 24);
-    X[2] = *RK++ ^ ((uint32_t)FSb[Y[2] & 0xff]) ^ ((uint32_t)FSb[(Y[3] >> 8) & 0xff] << 8) ^ ((uint32_t)FSb[(Y[0] >> 16) & 0xff] << 16) ^ ((uint32_t)FSb[Y[1] >> 24] << 24);
-    X[3] = *RK++ ^ ((uint32_t)FSb[Y[3] & 0xff]) ^ ((uint32_t)FSb[(Y[0] >> 8) & 0xff] << 8) ^ ((uint32_t)FSb[(Y[1] >> 16) & 0xff] << 16) ^ ((uint32_t)FSb[Y[2] >> 24] << 24);
+    X0 = *RK++ ^ ((uint32_t)FSb[Y0 & 0xff]) ^ ((uint32_t)FSb[(Y1 >> 8) & 0xff] << 8) ^ ((uint32_t)FSb[(Y2 >> 16) & 0xff] << 16) ^ ((uint32_t)FSb[Y3 >> 24] << 24);
+    X1 = *RK++ ^ ((uint32_t)FSb[Y1 & 0xff]) ^ ((uint32_t)FSb[(Y2 >> 8) & 0xff] << 8) ^ ((uint32_t)FSb[(Y3 >> 16) & 0xff] << 16) ^ ((uint32_t)FSb[Y0 >> 24] << 24);
+    X2 = *RK++ ^ ((uint32_t)FSb[Y2 & 0xff]) ^ ((uint32_t)FSb[(Y3 >> 8) & 0xff] << 8) ^ ((uint32_t)FSb[(Y0 >> 16) & 0xff] << 16) ^ ((uint32_t)FSb[Y1 >> 24] << 24);
+    X3 = *RK++ ^ ((uint32_t)FSb[Y3 & 0xff]) ^ ((uint32_t)FSb[(Y0 >> 8) & 0xff] << 8) ^ ((uint32_t)FSb[(Y1 >> 16) & 0xff] << 16) ^ ((uint32_t)FSb[Y2 >> 24] << 24);
 
-    PUT_UINT32_LE(state + 0, X[0]);
-    PUT_UINT32_LE(state + 4, X[1]);
-    PUT_UINT32_LE(state + 8, X[2]);
-    PUT_UINT32_LE(state +12, X[3]);
+    PUT_UINT32_LE(state + 0, X0);
+    PUT_UINT32_LE(state + 4, X1);
+    PUT_UINT32_LE(state + 8, X2);
+    PUT_UINT32_LE(state +12, X3);
 }
 static void decrypt_block(uint8_t state[AES_BLOCKLEN], const uint32_t* RK, const uint8_t num_rounds) noexcept
 {
-    uint32_t X[4];
-    uint32_t Y[4];
+    uint32_t X0, X1, X2, X3, Y0, Y1, Y2, Y3;
 
-    X[0] = GET_UINT32_LE(state +  0); X[0] ^= *RK++;
-    X[1] = GET_UINT32_LE(state +  4); X[1] ^= *RK++;
-    X[2] = GET_UINT32_LE(state +  8); X[2] ^= *RK++;
-    X[3] = GET_UINT32_LE(state + 12); X[3] ^= *RK++;
+    X0 = GET_UINT32_LE(state +  0); X0 ^= *RK++;
+    X1 = GET_UINT32_LE(state +  4); X1 ^= *RK++;
+    X2 = GET_UINT32_LE(state +  8); X2 ^= *RK++;
+    X3 = GET_UINT32_LE(state + 12); X3 ^= *RK++;
 
     for (int i = (num_rounds >> 1) - 1; i > 0; i--) {
-        AES_RROUND(Y[0], Y[1], Y[2], Y[3], X[0], X[1], X[2], X[3]);
-        AES_RROUND(X[0], X[1], X[2], X[3], Y[0], Y[1], Y[2], Y[3]);
+        AES_RROUND(Y0, Y1, Y2, Y3, X0, X1, X2, X3);
+        AES_RROUND(X0, X1, X2, X3, Y0, Y1, Y2, Y3);
     }
 
-    AES_RROUND(Y[0], Y[1], Y[2], Y[3], X[0], X[1], X[2], X[3]);
+    AES_RROUND(Y0, Y1, Y2, Y3, X0, X1, X2, X3);
 
-    X[0] = *RK++ ^ ((uint32_t)RSb[Y[0] & 0xff]) ^ ((uint32_t)RSb[(Y[3] >> 8) & 0xff] << 8) ^ ((uint32_t)RSb[(Y[2] >> 16) & 0xff] << 16) ^ ((uint32_t)RSb[Y[1] >> 24] << 24);
-    X[1] = *RK++ ^ ((uint32_t)RSb[Y[1] & 0xff]) ^ ((uint32_t)RSb[(Y[0] >> 8) & 0xff] << 8) ^ ((uint32_t)RSb[(Y[3] >> 16) & 0xff] << 16) ^ ((uint32_t)RSb[Y[2] >> 24] << 24);
-    X[2] = *RK++ ^ ((uint32_t)RSb[Y[2] & 0xff]) ^ ((uint32_t)RSb[(Y[1] >> 8) & 0xff] << 8) ^ ((uint32_t)RSb[(Y[0] >> 16) & 0xff] << 16) ^ ((uint32_t)RSb[Y[3] >> 24] << 24);
-    X[3] = *RK++ ^ ((uint32_t)RSb[Y[3] & 0xff]) ^ ((uint32_t)RSb[(Y[2] >> 8) & 0xff] << 8) ^ ((uint32_t)RSb[(Y[1] >> 16) & 0xff] << 16) ^ ((uint32_t)RSb[Y[0] >> 24] << 24);
+    X0 = *RK++ ^ ((uint32_t)RSb[Y0 & 0xff]) ^ ((uint32_t)RSb[(Y3 >> 8) & 0xff] << 8) ^ ((uint32_t)RSb[(Y2 >> 16) & 0xff] << 16) ^ ((uint32_t)RSb[Y1 >> 24] << 24);
+    X1 = *RK++ ^ ((uint32_t)RSb[Y1 & 0xff]) ^ ((uint32_t)RSb[(Y0 >> 8) & 0xff] << 8) ^ ((uint32_t)RSb[(Y3 >> 16) & 0xff] << 16) ^ ((uint32_t)RSb[Y2 >> 24] << 24);
+    X2 = *RK++ ^ ((uint32_t)RSb[Y2 & 0xff]) ^ ((uint32_t)RSb[(Y1 >> 8) & 0xff] << 8) ^ ((uint32_t)RSb[(Y0 >> 16) & 0xff] << 16) ^ ((uint32_t)RSb[Y3 >> 24] << 24);
+    X3 = *RK++ ^ ((uint32_t)RSb[Y3 & 0xff]) ^ ((uint32_t)RSb[(Y2 >> 8) & 0xff] << 8) ^ ((uint32_t)RSb[(Y1 >> 16) & 0xff] << 16) ^ ((uint32_t)RSb[Y0 >> 24] << 24);
 
-    PUT_UINT32_LE(state +  0, X[0]);
-    PUT_UINT32_LE(state +  4, X[1]);
-    PUT_UINT32_LE(state +  8, X[2]);
-    PUT_UINT32_LE(state + 12, X[3]);
+    PUT_UINT32_LE(state +  0, X0);
+    PUT_UINT32_LE(state +  4, X1);
+    PUT_UINT32_LE(state +  8, X2);
+    PUT_UINT32_LE(state + 12, X3);
 }
 
-/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // ECB
-/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // NOTE: ECB is considered insecure for most uses
 void AES_ECB_encrypt(uint8_t* data, const size_t data_length, const uint8_t* key, const uint8_t key_length) noexcept
 {
@@ -357,9 +355,9 @@ void AES_ECB_decrypt(uint8_t* data, const size_t data_length, const uint8_t* key
         decrypt_block(data + i, round_key, num_rounds);
 }
 
-/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // CBC
-/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Suggest https://en.wikipedia.org/wiki/Padding_(cryptography)#PKCS7 for padding scheme
 // NOTES: no IV should ever be reused with the same key 
 void AES_CBC_encrypt(uint8_t* data, const size_t data_length, const uint8_t* key, const uint8_t key_length, const uint8_t iv[AES_BLOCKLEN]) noexcept
@@ -408,9 +406,9 @@ void AES_CBC_decrypt(uint8_t* data, const size_t data_length, const uint8_t* key
     }
 }
 
-/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // CTR
-/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Same function for encrypting as for decrypting. 
 // IV is incremented for every block, and used after encryption as XOR-compliment for output
 // Suggesting https://en.wikipedia.org/wiki/Padding_(cryptography)#PKCS7 for padding scheme
