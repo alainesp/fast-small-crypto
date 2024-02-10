@@ -202,10 +202,11 @@ static void key_expansion_encryption(uint32_t* RK, const uint8_t* key, const uns
     switch (num_rounds) {
     case 10:
         for (int i = 0; i < 10; i++, RK += 4) {
-            RK[4] = RK[0] ^ round_constants[i] ^ ((uint32_t)FSb[(RK[3] >> 8) & 0xff]) ^ ((uint32_t)FSb[(RK[3] >> 16) & 0xff] << 8) ^ ((uint32_t)FSb[(RK[3] >> 24)] << 16) ^ ((uint32_t)FSb[RK[3] & 0xff] << 24);
+            uint32_t RK3 = RK[3];
+            RK[4] = RK[0] ^ round_constants[i] ^ ((uint32_t)FSb[(RK3 >> 8) & 0xff]) ^ ((uint32_t)FSb[(RK3 >> 16) & 0xff] << 8) ^ ((uint32_t)FSb[(RK3 >> 24)] << 16) ^ ((uint32_t)FSb[RK3 & 0xff] << 24);
             RK[5] = RK[1] ^ RK[4];
             RK[6] = RK[2] ^ RK[5];
-            RK[7] = RK[3] ^ RK[6];
+            RK[7] = RK3   ^ RK[6];
         }
         break;
     case 12:
@@ -213,7 +214,8 @@ static void key_expansion_encryption(uint32_t* RK, const uint8_t* key, const uns
         RK[5] = GET_UINT32_LE(key + 20);
 
         for (int i = 0; i < 8; i++, RK += 6) {
-            RK[ 6] = RK[0] ^ round_constants[i] ^ ((uint32_t)FSb[(RK[5] >> 8) & 0xff]) ^ ((uint32_t)FSb[(RK[5] >> 16) & 0xff] << 8) ^ ((uint32_t)FSb[RK[5] >> 24] << 16) ^ ((uint32_t)FSb[RK[5] & 0xff] << 24);
+            uint32_t RK5 = RK[5];
+            RK[ 6] = RK[0] ^ round_constants[i] ^ ((uint32_t)FSb[(RK5 >> 8) & 0xff]) ^ ((uint32_t)FSb[(RK5 >> 16) & 0xff] << 8) ^ ((uint32_t)FSb[RK5 >> 24] << 16) ^ ((uint32_t)FSb[RK5 & 0xff] << 24);
             RK[ 7] = RK[1] ^ RK[ 6];
             RK[ 8] = RK[2] ^ RK[ 7];
             RK[ 9] = RK[3] ^ RK[ 8];
@@ -228,7 +230,8 @@ static void key_expansion_encryption(uint32_t* RK, const uint8_t* key, const uns
         RK[7] = GET_UINT32_LE(key + 28);
 
         for (int i = 0; i < 7; i++, RK += 8) {
-            RK[ 8] = RK[0] ^ round_constants[i] ^ ((uint32_t)FSb[(RK[7] >> 8) & 0xff]) ^ ((uint32_t)FSb[(RK[7] >> 16) & 0xff] << 8) ^ ((uint32_t)FSb[RK[7] >> 24] << 16) ^ ((uint32_t)FSb[RK[7] & 0xff] << 24);
+            uint32_t RK7 = RK[7];
+            RK[ 8] = RK[0] ^ round_constants[i] ^ ((uint32_t)FSb[(RK7 >> 8) & 0xff]) ^ ((uint32_t)FSb[(RK7 >> 16) & 0xff] << 8) ^ ((uint32_t)FSb[RK7 >> 24] << 16) ^ ((uint32_t)FSb[RK7 & 0xff] << 24);
             RK[ 9] = RK[1] ^ RK[ 8];
             RK[10] = RK[2] ^ RK[ 9];
             RK[11] = RK[3] ^ RK[10];
@@ -250,9 +253,17 @@ static void key_expansion_decryption(uint32_t* RK, const uint8_t* key, const uns
     RK += 4;
     SK -= 4;
 
-    for (int i = num_rounds - 1; i > 0; i--, SK -= 8)
-        for (int j = 0; j < 4; j++, SK++)
-            *RK++ = RT0[FSb[*SK & 0xff]] ^ RT1[FSb[(*SK >> 8) & 0xff]] ^ RT2[FSb[(*SK >> 16) & 0xff]] ^ RT3[FSb[*SK >> 24]];
+    for (uint32_t i = 0; i < num_rounds - 1; i++, SK -= 4, RK += 4)
+    {
+        uint32_t skv0 = SK[0];
+        uint32_t skv1 = SK[1];
+        uint32_t skv2 = SK[2];
+        uint32_t skv3 = SK[3];
+        RK[0] = RT0[FSb[skv0 & 0xff]] ^ RT1[FSb[(skv0 >> 8) & 0xff]] ^ RT2[FSb[(skv0 >> 16) & 0xff]] ^ RT3[FSb[skv0 >> 24]];
+        RK[1] = RT0[FSb[skv1 & 0xff]] ^ RT1[FSb[(skv1 >> 8) & 0xff]] ^ RT2[FSb[(skv1 >> 16) & 0xff]] ^ RT3[FSb[skv1 >> 24]];
+        RK[2] = RT0[FSb[skv2 & 0xff]] ^ RT1[FSb[(skv2 >> 8) & 0xff]] ^ RT2[FSb[(skv2 >> 16) & 0xff]] ^ RT3[FSb[skv2 >> 24]];
+        RK[3] = RT0[FSb[skv3 & 0xff]] ^ RT1[FSb[(skv3 >> 8) & 0xff]] ^ RT2[FSb[(skv3 >> 16) & 0xff]] ^ RT3[FSb[skv3 >> 24]];
+    }
 
     memcpy(RK, SK, 16);
 }
