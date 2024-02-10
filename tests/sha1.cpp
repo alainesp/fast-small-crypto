@@ -284,7 +284,7 @@ TEST(sha1, sha1_block_AVX512)
 }
 
 // SHA1 reference
-#include "fsc.cpp"
+#include "byteswap.h"
 static void copy_with_padding(uint8_t message[64], const char* text)
 {
 	size_t text_length = strlen(text);

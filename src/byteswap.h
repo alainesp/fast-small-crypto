@@ -3,8 +3,10 @@
 // 
 // Copyright (c) 2024 by Alain Espinosa.
 /////////////////////////////////////////////////////////////////////////////////
+
+#pragma once
+
 #include <version>
-#include <cassert>
 #include <cstdint>
 
 #ifdef __cpp_lib_byteswap

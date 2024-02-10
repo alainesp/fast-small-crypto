@@ -8,7 +8,7 @@
 #include <gtest/gtest.h>
 #include <string>
 #include <bit>
-#include "fsc.cpp"
+#include "byteswap.h"
 
 /////////////////////////////////////////////////////////////////////////////////
 /// General
