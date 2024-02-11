@@ -388,13 +388,13 @@ void AES_CBC_encrypt(uint8_t* data, const size_t data_length, const uint8_t* key
     const uint8_t* current_iv = iv;
     for (size_t i = 0; i < data_length; i += AES_BLOCKLEN, data += AES_BLOCKLEN)
     {
-        for (uint8_t j = 0; j < AES_BLOCKLEN; j += 4)
-            PUT_UINT32_LE(data + j, GET_UINT32_LE(data + j) ^ GET_UINT32_LE(current_iv + j));
+        PUT_UINT32_LE(data +  0, GET_UINT32_LE(data +  0) ^ GET_UINT32_LE(current_iv +  0));
+        PUT_UINT32_LE(data +  4, GET_UINT32_LE(data +  4) ^ GET_UINT32_LE(current_iv +  4));
+        PUT_UINT32_LE(data +  8, GET_UINT32_LE(data +  8) ^ GET_UINT32_LE(current_iv +  8));
+        PUT_UINT32_LE(data + 12, GET_UINT32_LE(data + 12) ^ GET_UINT32_LE(current_iv + 12));
         encrypt_block(data, round_key, num_rounds);
         current_iv = data;
     }
-    /* store Iv in ctx for next call */
-    //memcpy(ctx_iv, current_iv, AES_BLOCKLEN);
 }
 void AES_CBC_decrypt(uint8_t* data, const size_t data_length, const uint8_t* key, const uint8_t key_length, const uint8_t iv[AES_BLOCKLEN]) noexcept
 {
@@ -405,17 +405,21 @@ void AES_CBC_decrypt(uint8_t* data, const size_t data_length, const uint8_t* key
 
     uint32_t round_key[AES256_ROUNDKEY_DWORDS];
     uint32_t ctx_iv[AES_BLOCKLEN / sizeof(uint32_t)];
+    uint32_t tmp_iv[AES_BLOCKLEN / sizeof(uint32_t)];
     key_expansion_decryption(round_key, key, num_rounds);
     memcpy(ctx_iv, iv, AES_BLOCKLEN);
 
-    uint8_t storeNextIv[AES_BLOCKLEN];
     for (size_t i = 0; i < data_length; i += AES_BLOCKLEN, data += AES_BLOCKLEN)
     {
-        memcpy(storeNextIv, data, AES_BLOCKLEN);
+        memcpy(tmp_iv, data, AES_BLOCKLEN);
+
         decrypt_block(data, round_key, num_rounds);
-        for (uint8_t j = 0; j < AES_BLOCKLEN; j += 4)
-            PUT_UINT32_LE(data + j, GET_UINT32_LE(data + j) ^ ctx_iv[j/4]);
-        memcpy(ctx_iv, storeNextIv, AES_BLOCKLEN);
+        PUT_UINT32_LE(data +  0, GET_UINT32_LE(data +  0) ^ ctx_iv[0]);
+        PUT_UINT32_LE(data +  4, GET_UINT32_LE(data +  4) ^ ctx_iv[1]);
+        PUT_UINT32_LE(data +  8, GET_UINT32_LE(data +  8) ^ ctx_iv[2]);
+        PUT_UINT32_LE(data + 12, GET_UINT32_LE(data + 12) ^ ctx_iv[3]);
+
+        memcpy(ctx_iv, tmp_iv, AES_BLOCKLEN);
     }
 }
 
