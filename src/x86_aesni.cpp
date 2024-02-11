@@ -27,30 +27,8 @@ using namespace simd;
 //#define AES192_keyExpSize 208
 #define AES256_ROUNDKEY_VEC128 ((240 + 16) / sizeof(simd::Vec128u8)) // 16 more bytes to simplify key generation
 
-// Key expansion, 128-bit case
-static __m128i aesni_set_rk_128(__m128i state, __m128i xword) noexcept
-{
-    /*
-     * Finish generating the next round key.
-     *
-     * On entry state is r3:r2:r1:r0 and xword is X:stuff:stuff:stuff
-     * with X = rot( sub( r3 ) ) ^ RCON (obtained with AESKEYGENASSIST).
-     *
-     * On exit, xword is r7:r6:r5:r4
-     * with r4 = X + r0, r5 = r4 + r1, r6 = r5 + r2, r7 = r6 + r3
-     * and this is returned, to be written to the round key buffer.
-     */
-    xword = _mm_shuffle_epi32(xword, 0xff);   // X:X:X:X
-    xword = _mm_xor_si128(xword, state);      // X+r3:X+r2:X+r1:r4
-    state = _mm_slli_si128(state, 4);         // r2:r1:r0:0
-    xword = _mm_xor_si128(xword, state);      // X+r3+r2:X+r2+r1:r5:r4
-    state = _mm_slli_si128(state, 4);         // r1:r0:0:0
-    xword = _mm_xor_si128(xword, state);      // X+r3+r2+r1:r6:r5:r4
-    state = _mm_slli_si128(state, 4);         // r0:0:0:0
-    state = _mm_xor_si128(xword, state);      // r7:r6:r5:r4
-    return state;
-}
-static void aesni_set_rk_192(__m128i* state0, __m128i* state1, __m128i xword, unsigned char* rk) noexcept
+// Key expansion, 192-bit case
+static SIMD_INLINE void aesni_set_rk_192(__m128i& state0, __m128i& state1, __m128i xword, unsigned char* rk) noexcept
 {
     /*
      * Finish generating the next 6 quarter-keys.
@@ -63,28 +41,28 @@ static void aesni_set_rk_192(__m128i* state0, __m128i* state1, __m128i xword, un
      * and those are written to the round key buffer.
      */
     xword = _mm_shuffle_epi32(xword, 0x55);   // X:X:X:X
-    xword = _mm_xor_si128(xword, *state0);    // X+r3:X+r2:X+r1:X+r0
-    *state0 = _mm_slli_si128(*state0, 4);     // r2:r1:r0:0
-    xword = _mm_xor_si128(xword, *state0);    // X+r3+r2:X+r2+r1:X+r1+r0:X+r0
-    *state0 = _mm_slli_si128(*state0, 4);     // r1:r0:0:0
-    xword = _mm_xor_si128(xword, *state0);    // X+r3+r2+r1:X+r2+r1+r0:X+r1+r0:X+r0
-    *state0 = _mm_slli_si128(*state0, 4);     // r0:0:0:0
-    xword = _mm_xor_si128(xword, *state0);    // X+r3+r2+r1+r0:X+r2+r1+r0:X+r1+r0:X+r0
-    *state0 = xword;                          // = r9:r8:r7:r6
+    xword = _mm_xor_si128(xword, state0);    // X+r3:X+r2:X+r1:X+r0
+    state0 = _mm_slli_si128(state0, 4);     // r2:r1:r0:0
+    xword = _mm_xor_si128(xword, state0);    // X+r3+r2:X+r2+r1:X+r1+r0:X+r0
+    state0 = _mm_slli_si128(state0, 4);     // r1:r0:0:0
+    xword = _mm_xor_si128(xword, state0);    // X+r3+r2+r1:X+r2+r1+r0:X+r1+r0:X+r0
+    state0 = _mm_slli_si128(state0, 4);     // r0:0:0:0
+    xword = _mm_xor_si128(xword, state0);    // X+r3+r2+r1+r0:X+r2+r1+r0:X+r1+r0:X+r0
+    state0 = xword;                          // = r9:r8:r7:r6
 
     xword = _mm_shuffle_epi32(xword, 0xff);   // r9:r9:r9:r9
-    xword = _mm_xor_si128(xword, *state1);    // stuff:stuff:r9+r5:r9+r4
-    *state1 = _mm_slli_si128(*state1, 4);     // stuff:stuff:r4:0
-    xword = _mm_xor_si128(xword, *state1);    // stuff:stuff:r9+r5+r4:r9+r4
-    *state1 = xword;                          // = stuff:stuff:r11:r10
+    xword = _mm_xor_si128(xword, state1);    // stuff:stuff:r9+r5:r9+r4
+    state1 = _mm_slli_si128(state1, 4);     // stuff:stuff:r4:0
+    xword = _mm_xor_si128(xword, state1);    // stuff:stuff:r9+r5+r4:r9+r4
+    state1 = xword;                          // = stuff:stuff:r11:r10
 
     /* Store state0 and the low half of state1 into rk, which is conceptually
      * an array of 24-byte elements. Since 24 is not a multiple of 16,
      * rk is not necessarily aligned so just `*rk = *state0` doesn't work. */
-    memcpy(rk, state0, 16);
-    memcpy(rk + 16, state1, 8);
+    simd::storeu((__m128i*)rk, state0);
+    simd::storeu((__m128i*)(rk+16), state1); // NOTE: Only need to store 8 bytes instead of 16
 }
-static void aesni_set_rk_256(__m128i state0, __m128i state1, __m128i xword, __m128i* rk0, __m128i* rk1) noexcept
+static SIMD_INLINE void aesni_set_rk_256(__m128i state0, __m128i state1, __m128i xword, __m128i& rk0, __m128i& rk1) noexcept
 {
     /*
      * Finish generating the next two round keys.
@@ -103,7 +81,7 @@ static void aesni_set_rk_256(__m128i state0, __m128i state1, __m128i xword, __m1
     xword = _mm_xor_si128(xword, state0);
     state0 = _mm_slli_si128(state0, 4);
     state0 = _mm_xor_si128(state0, xword);
-    *rk0 = state0;
+    rk0 = state0;
 
     /* Set xword to stuff:Y:stuff:stuff with Y = subword( r11 )
      * and proceed to generate next round key from there */
@@ -116,50 +94,54 @@ static void aesni_set_rk_256(__m128i state0, __m128i state1, __m128i xword, __m1
     xword = _mm_xor_si128(xword, state1);
     state1 = _mm_slli_si128(state1, 4);
     state1 = _mm_xor_si128(state1, xword);
-    *rk1 = state1;
+    rk1 = state1;
 }
 
 // This function produces 4*(Nr+1) round keys. The round keys are used in each round to decrypt the states. 
 static void key_expansion_encryption(simd::Vec128u8* RK, const uint8_t* key, const unsigned num_rounds) noexcept
 {
+    simd::Vec128u8 RKv, RKv0, RKv1;
+
     switch (num_rounds) {
     case 10:// AES128
-        memcpy(RK, key, 16);
-        RK[ 1] = aesni_set_rk_128(RK[0], _mm_aeskeygenassist_si128(RK[0], 0x01));
-        RK[ 2] = aesni_set_rk_128(RK[1], _mm_aeskeygenassist_si128(RK[1], 0x02));
-        RK[ 3] = aesni_set_rk_128(RK[2], _mm_aeskeygenassist_si128(RK[2], 0x04));
-        RK[ 4] = aesni_set_rk_128(RK[3], _mm_aeskeygenassist_si128(RK[3], 0x08));
-        RK[ 5] = aesni_set_rk_128(RK[4], _mm_aeskeygenassist_si128(RK[4], 0x10));
-        RK[ 6] = aesni_set_rk_128(RK[5], _mm_aeskeygenassist_si128(RK[5], 0x20));
-        RK[ 7] = aesni_set_rk_128(RK[6], _mm_aeskeygenassist_si128(RK[6], 0x40));
-        RK[ 8] = aesni_set_rk_128(RK[7], _mm_aeskeygenassist_si128(RK[7], 0x80));
-        RK[ 9] = aesni_set_rk_128(RK[8], _mm_aeskeygenassist_si128(RK[8], 0x1B));
-        RK[10] = aesni_set_rk_128(RK[9], _mm_aeskeygenassist_si128(RK[9], 0x36));
+        RKv = simd::loadu((const simd::Vec128u8*)key);                                                                                                     simd::store(RK +  0, RKv);
+        RKv ^= _mm_shuffle_epi32(_mm_aeskeygenassist_si128(RKv, 0x01), 0xff) ^ _mm_slli_si128(RKv, 4) ^ _mm_slli_si128(RKv, 8) ^ _mm_slli_si128(RKv, 12);  simd::store(RK +  1, RKv);
+        RKv ^= _mm_shuffle_epi32(_mm_aeskeygenassist_si128(RKv, 0x02), 0xff) ^ _mm_slli_si128(RKv, 4) ^ _mm_slli_si128(RKv, 8) ^ _mm_slli_si128(RKv, 12);  simd::store(RK +  2, RKv);
+        RKv ^= _mm_shuffle_epi32(_mm_aeskeygenassist_si128(RKv, 0x04), 0xff) ^ _mm_slli_si128(RKv, 4) ^ _mm_slli_si128(RKv, 8) ^ _mm_slli_si128(RKv, 12);  simd::store(RK +  3, RKv);
+        RKv ^= _mm_shuffle_epi32(_mm_aeskeygenassist_si128(RKv, 0x08), 0xff) ^ _mm_slli_si128(RKv, 4) ^ _mm_slli_si128(RKv, 8) ^ _mm_slli_si128(RKv, 12);  simd::store(RK +  4, RKv);
+        RKv ^= _mm_shuffle_epi32(_mm_aeskeygenassist_si128(RKv, 0x10), 0xff) ^ _mm_slli_si128(RKv, 4) ^ _mm_slli_si128(RKv, 8) ^ _mm_slli_si128(RKv, 12);  simd::store(RK +  5, RKv);
+        RKv ^= _mm_shuffle_epi32(_mm_aeskeygenassist_si128(RKv, 0x20), 0xff) ^ _mm_slli_si128(RKv, 4) ^ _mm_slli_si128(RKv, 8) ^ _mm_slli_si128(RKv, 12);  simd::store(RK +  6, RKv);
+        RKv ^= _mm_shuffle_epi32(_mm_aeskeygenassist_si128(RKv, 0x40), 0xff) ^ _mm_slli_si128(RKv, 4) ^ _mm_slli_si128(RKv, 8) ^ _mm_slli_si128(RKv, 12);  simd::store(RK +  7, RKv);
+        RKv ^= _mm_shuffle_epi32(_mm_aeskeygenassist_si128(RKv, 0x80), 0xff) ^ _mm_slli_si128(RKv, 4) ^ _mm_slli_si128(RKv, 8) ^ _mm_slli_si128(RKv, 12);  simd::store(RK +  8, RKv);
+        RKv ^= _mm_shuffle_epi32(_mm_aeskeygenassist_si128(RKv, 0x1B), 0xff) ^ _mm_slli_si128(RKv, 4) ^ _mm_slli_si128(RKv, 8) ^ _mm_slli_si128(RKv, 12);  simd::store(RK +  9, RKv);
+        RKv ^= _mm_shuffle_epi32(_mm_aeskeygenassist_si128(RKv, 0x36), 0xff) ^ _mm_slli_si128(RKv, 4) ^ _mm_slli_si128(RKv, 8) ^ _mm_slli_si128(RKv, 12);  simd::store(RK + 10, RKv);
         break;
     case 12:// AES192
         memcpy(RK, key, 24);
-        __m128i state0 = RK[0];
-        __m128i state1 = _mm_loadl_epi64(RK + 1);
+        RKv0 = simd::load(RK);
+        RKv1 = _mm_loadl_epi64(RK + 1);
 
-        aesni_set_rk_192(&state0, &state1, _mm_aeskeygenassist_si128(state1, 0x01), ((uint8_t*)RK) + 24 * 1);
-        aesni_set_rk_192(&state0, &state1, _mm_aeskeygenassist_si128(state1, 0x02), ((uint8_t*)RK) + 24 * 2);
-        aesni_set_rk_192(&state0, &state1, _mm_aeskeygenassist_si128(state1, 0x04), ((uint8_t*)RK) + 24 * 3);
-        aesni_set_rk_192(&state0, &state1, _mm_aeskeygenassist_si128(state1, 0x08), ((uint8_t*)RK) + 24 * 4);
-        aesni_set_rk_192(&state0, &state1, _mm_aeskeygenassist_si128(state1, 0x10), ((uint8_t*)RK) + 24 * 5);
-        aesni_set_rk_192(&state0, &state1, _mm_aeskeygenassist_si128(state1, 0x20), ((uint8_t*)RK) + 24 * 6);
-        aesni_set_rk_192(&state0, &state1, _mm_aeskeygenassist_si128(state1, 0x40), ((uint8_t*)RK) + 24 * 7);
-        aesni_set_rk_192(&state0, &state1, _mm_aeskeygenassist_si128(state1, 0x80), ((uint8_t*)RK) + 24 * 8);
+        aesni_set_rk_192(RKv0, RKv1, _mm_aeskeygenassist_si128(RKv1, 0x01), ((uint8_t*)RK) + 24 * 1);
+        aesni_set_rk_192(RKv0, RKv1, _mm_aeskeygenassist_si128(RKv1, 0x02), ((uint8_t*)RK) + 24 * 2);
+        aesni_set_rk_192(RKv0, RKv1, _mm_aeskeygenassist_si128(RKv1, 0x04), ((uint8_t*)RK) + 24 * 3);
+        aesni_set_rk_192(RKv0, RKv1, _mm_aeskeygenassist_si128(RKv1, 0x08), ((uint8_t*)RK) + 24 * 4);
+        aesni_set_rk_192(RKv0, RKv1, _mm_aeskeygenassist_si128(RKv1, 0x10), ((uint8_t*)RK) + 24 * 5);
+        aesni_set_rk_192(RKv0, RKv1, _mm_aeskeygenassist_si128(RKv1, 0x20), ((uint8_t*)RK) + 24 * 6);
+        aesni_set_rk_192(RKv0, RKv1, _mm_aeskeygenassist_si128(RKv1, 0x40), ((uint8_t*)RK) + 24 * 7);
+        aesni_set_rk_192(RKv0, RKv1, _mm_aeskeygenassist_si128(RKv1, 0x80), ((uint8_t*)RK) + 24 * 8);
         break;
     case 14:// AES256
-        memcpy(RK, key, 32);
+        RKv0 = simd::loadu((const simd::Vec128u8*)key);
+        RKv1 = simd::loadu((const simd::Vec128u8*)(key + 16));
+        simd::store(RK + 0, RKv0); simd::store(RK + 1, RKv1);
 
-        aesni_set_rk_256(RK[ 0], RK[ 1], _mm_aeskeygenassist_si128(RK[ 1], 0x01), RK +  2, RK +  3);
-        aesni_set_rk_256(RK[ 2], RK[ 3], _mm_aeskeygenassist_si128(RK[ 3], 0x02), RK +  4, RK +  5);
-        aesni_set_rk_256(RK[ 4], RK[ 5], _mm_aeskeygenassist_si128(RK[ 5], 0x04), RK +  6, RK +  7);
-        aesni_set_rk_256(RK[ 6], RK[ 7], _mm_aeskeygenassist_si128(RK[ 7], 0x08), RK +  8, RK +  9);
-        aesni_set_rk_256(RK[ 8], RK[ 9], _mm_aeskeygenassist_si128(RK[ 9], 0x10), RK + 10, RK + 11);
-        aesni_set_rk_256(RK[10], RK[11], _mm_aeskeygenassist_si128(RK[11], 0x20), RK + 12, RK + 13);
-        aesni_set_rk_256(RK[12], RK[13], _mm_aeskeygenassist_si128(RK[13], 0x40), RK + 14, RK + 15);
+        aesni_set_rk_256(RKv0, RKv1, _mm_aeskeygenassist_si128(RKv1, 0x01), RKv0, RKv1);   simd::store(RK +  2, RKv0); simd::store(RK +  3, RKv1);
+        aesni_set_rk_256(RKv0, RKv1, _mm_aeskeygenassist_si128(RKv1, 0x02), RKv0, RKv1);   simd::store(RK +  4, RKv0); simd::store(RK +  5, RKv1);
+        aesni_set_rk_256(RKv0, RKv1, _mm_aeskeygenassist_si128(RKv1, 0x04), RKv0, RKv1);   simd::store(RK +  6, RKv0); simd::store(RK +  7, RKv1);
+        aesni_set_rk_256(RKv0, RKv1, _mm_aeskeygenassist_si128(RKv1, 0x08), RKv0, RKv1);   simd::store(RK +  8, RKv0); simd::store(RK +  9, RKv1);
+        aesni_set_rk_256(RKv0, RKv1, _mm_aeskeygenassist_si128(RKv1, 0x10), RKv0, RKv1);   simd::store(RK + 10, RKv0); simd::store(RK + 11, RKv1);
+        aesni_set_rk_256(RKv0, RKv1, _mm_aeskeygenassist_si128(RKv1, 0x20), RKv0, RKv1);   simd::store(RK + 12, RKv0); simd::store(RK + 13, RKv1);
+        aesni_set_rk_256(RKv0, RKv1, _mm_aeskeygenassist_si128(RKv1, 0x40), RKv0, RKv1);   simd::store(RK + 14, RKv0); simd::store(RK + 15, RKv1);
         break;
     }
 }
