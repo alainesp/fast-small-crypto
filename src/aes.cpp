@@ -13,6 +13,7 @@
 
 #include <cstring>
 #include <cassert>
+#include <algorithm>
 #include "byteswap.h"
 #include "aes.h"
 
@@ -245,53 +246,55 @@ static void key_expansion_encryption(uint32_t* RK, const uint8_t* key, const uns
 }
 static void key_expansion_decryption(uint32_t* RK, const uint8_t* key, const unsigned num_rounds) noexcept
 {
-    uint32_t sk0[AES256_ROUNDKEY_DWORDS];
-    key_expansion_encryption(sk0, key, num_rounds);
+    key_expansion_encryption(RK, key, num_rounds);
 
-    uint32_t* SK = sk0 + num_rounds * 4;
-    memcpy(RK, SK, 16);
-    RK += 4;
-    SK -= 4;
-
-    for (uint32_t i = 0; i < num_rounds - 1; i++, SK -= 4, RK += 4)
+    // Reverse data on RK
+    uint32_t* rk_tail = RK + num_rounds * 4;
+    for (uint32_t i = 0; i < 4 * ((num_rounds + 1) / 2); i += 4, rk_tail -= 4)
     {
-        uint32_t skv0 = SK[0];
-        uint32_t skv1 = SK[1];
-        uint32_t skv2 = SK[2];
-        uint32_t skv3 = SK[3];
-        RK[0] = RT0[FSb[skv0 & 0xff]] ^ RT1[FSb[(skv0 >> 8) & 0xff]] ^ RT2[FSb[(skv0 >> 16) & 0xff]] ^ RT3[FSb[skv0 >> 24]];
-        RK[1] = RT0[FSb[skv1 & 0xff]] ^ RT1[FSb[(skv1 >> 8) & 0xff]] ^ RT2[FSb[(skv1 >> 16) & 0xff]] ^ RT3[FSb[skv1 >> 24]];
-        RK[2] = RT0[FSb[skv2 & 0xff]] ^ RT1[FSb[(skv2 >> 8) & 0xff]] ^ RT2[FSb[(skv2 >> 16) & 0xff]] ^ RT3[FSb[skv2 >> 24]];
-        RK[3] = RT0[FSb[skv3 & 0xff]] ^ RT1[FSb[(skv3 >> 8) & 0xff]] ^ RT2[FSb[(skv3 >> 16) & 0xff]] ^ RT3[FSb[skv3 >> 24]];
+        std::swap(RK[0 + i], rk_tail[0]);
+        std::swap(RK[1 + i], rk_tail[1]);
+        std::swap(RK[2 + i], rk_tail[2]);
+        std::swap(RK[3 + i], rk_tail[3]);
     }
+    RK += 4;
 
-    memcpy(RK, SK, 16);
+    for (uint32_t i = 0; i < num_rounds - 1; i++, RK += 4)
+    {
+        uint32_t rk0 = RK[0];
+        uint32_t rk1 = RK[1];
+        uint32_t rk2 = RK[2];
+        uint32_t rk3 = RK[3];
+        RK[0] = RT0[FSb[rk0 & 0xff]] ^ RT1[FSb[(rk0 >> 8) & 0xff]] ^ RT2[FSb[(rk0 >> 16) & 0xff]] ^ RT3[FSb[rk0 >> 24]];
+        RK[1] = RT0[FSb[rk1 & 0xff]] ^ RT1[FSb[(rk1 >> 8) & 0xff]] ^ RT2[FSb[(rk1 >> 16) & 0xff]] ^ RT3[FSb[rk1 >> 24]];
+        RK[2] = RT0[FSb[rk2 & 0xff]] ^ RT1[FSb[(rk2 >> 8) & 0xff]] ^ RT2[FSb[(rk2 >> 16) & 0xff]] ^ RT3[FSb[rk2 >> 24]];
+        RK[3] = RT0[FSb[rk3 & 0xff]] ^ RT1[FSb[(rk3 >> 8) & 0xff]] ^ RT2[FSb[(rk3 >> 16) & 0xff]] ^ RT3[FSb[rk3 >> 24]];
+    }
 }
 
-#define AES_FROUND(X0, X1, X2, X3, Y0, Y1, Y2, Y3)                                                      \
-    do {                                                                                                \
-        (X0) = *RK++ ^ FT0[Y0 & 0xff] ^ FT1[(Y1 >> 8) & 0xff] ^ FT2[(Y2 >> 16) & 0xff] ^ FT3[Y3 >> 24]; \
-        (X1) = *RK++ ^ FT0[Y1 & 0xff] ^ FT1[(Y2 >> 8) & 0xff] ^ FT2[(Y3 >> 16) & 0xff] ^ FT3[Y0 >> 24]; \
-        (X2) = *RK++ ^ FT0[Y2 & 0xff] ^ FT1[(Y3 >> 8) & 0xff] ^ FT2[(Y0 >> 16) & 0xff] ^ FT3[Y1 >> 24]; \
-        (X3) = *RK++ ^ FT0[Y3 & 0xff] ^ FT1[(Y0 >> 8) & 0xff] ^ FT2[(Y1 >> 16) & 0xff] ^ FT3[Y2 >> 24]; \
-    } while (0)
+#define AES_FROUND(X0, X1, X2, X3, Y0, Y1, Y2, Y3)                                                  \
+    (X0) = RK[0] ^ FT0[Y0 & 0xff] ^ FT1[(Y1 >> 8) & 0xff] ^ FT2[(Y2 >> 16) & 0xff] ^ FT3[Y3 >> 24]; \
+    (X1) = RK[1] ^ FT0[Y1 & 0xff] ^ FT1[(Y2 >> 8) & 0xff] ^ FT2[(Y3 >> 16) & 0xff] ^ FT3[Y0 >> 24]; \
+    (X2) = RK[2] ^ FT0[Y2 & 0xff] ^ FT1[(Y3 >> 8) & 0xff] ^ FT2[(Y0 >> 16) & 0xff] ^ FT3[Y1 >> 24]; \
+    (X3) = RK[3] ^ FT0[Y3 & 0xff] ^ FT1[(Y0 >> 8) & 0xff] ^ FT2[(Y1 >> 16) & 0xff] ^ FT3[Y2 >> 24]; \
+    RK += 4;
 
-#define AES_RROUND(X0, X1, X2, X3, Y0, Y1, Y2, Y3)                                                       \
-    do {                                                                                                 \
-        (X0) = *RK++ ^ RT0[Y0 & 0xff] ^ RT1[(Y3 >>  8) & 0xff] ^ RT2[(Y2 >> 16) & 0xff] ^ RT3[Y1 >> 24]; \
-        (X1) = *RK++ ^ RT0[Y1 & 0xff] ^ RT1[(Y0 >>  8) & 0xff] ^ RT2[(Y3 >> 16) & 0xff] ^ RT3[Y2 >> 24]; \
-        (X2) = *RK++ ^ RT0[Y2 & 0xff] ^ RT1[(Y1 >>  8) & 0xff] ^ RT2[(Y0 >> 16) & 0xff] ^ RT3[Y3 >> 24]; \
-        (X3) = *RK++ ^ RT0[Y3 & 0xff] ^ RT1[(Y2 >>  8) & 0xff] ^ RT2[(Y1 >> 16) & 0xff] ^ RT3[Y0 >> 24]; \
-    } while (0)
+#define AES_RROUND(X0, X1, X2, X3, Y0, Y1, Y2, Y3)                                                   \
+    (X0) = RK[0] ^ RT0[Y0 & 0xff] ^ RT1[(Y3 >>  8) & 0xff] ^ RT2[(Y2 >> 16) & 0xff] ^ RT3[Y1 >> 24]; \
+    (X1) = RK[1] ^ RT0[Y1 & 0xff] ^ RT1[(Y0 >>  8) & 0xff] ^ RT2[(Y3 >> 16) & 0xff] ^ RT3[Y2 >> 24]; \
+    (X2) = RK[2] ^ RT0[Y2 & 0xff] ^ RT1[(Y1 >>  8) & 0xff] ^ RT2[(Y0 >> 16) & 0xff] ^ RT3[Y3 >> 24]; \
+    (X3) = RK[3] ^ RT0[Y3 & 0xff] ^ RT1[(Y2 >>  8) & 0xff] ^ RT2[(Y1 >> 16) & 0xff] ^ RT3[Y0 >> 24]; \
+    RK += 4;
 
 static void encrypt_block(uint8_t state[AES_BLOCKLEN], const uint32_t* RK, const uint8_t num_rounds) noexcept
 {
     uint32_t X0, X1, X2, X3, Y0, Y1, Y2, Y3;
 
-    X0 = GET_UINT32_LE(state +  0); X0 ^= *RK++;
-    X1 = GET_UINT32_LE(state +  4); X1 ^= *RK++;
-    X2 = GET_UINT32_LE(state +  8); X2 ^= *RK++;
-    X3 = GET_UINT32_LE(state + 12); X3 ^= *RK++;
+    X0 = GET_UINT32_LE(state +  0); X0 ^= RK[0];
+    X1 = GET_UINT32_LE(state +  4); X1 ^= RK[1];
+    X2 = GET_UINT32_LE(state +  8); X2 ^= RK[2];
+    X3 = GET_UINT32_LE(state + 12); X3 ^= RK[3];
+    RK += 4;
 
     for (int i = (num_rounds >> 1) - 1; i > 0; i--) {
         AES_FROUND(Y0, Y1, Y2, Y3, X0, X1, X2, X3);
@@ -300,10 +303,10 @@ static void encrypt_block(uint8_t state[AES_BLOCKLEN], const uint32_t* RK, const
 
     AES_FROUND(Y0, Y1, Y2, Y3, X0, X1, X2, X3);
 
-    X0 = *RK++ ^ ((uint32_t)FSb[Y0 & 0xff]) ^ ((uint32_t)FSb[(Y1 >> 8) & 0xff] << 8) ^ ((uint32_t)FSb[(Y2 >> 16) & 0xff] << 16) ^ ((uint32_t)FSb[Y3 >> 24] << 24);
-    X1 = *RK++ ^ ((uint32_t)FSb[Y1 & 0xff]) ^ ((uint32_t)FSb[(Y2 >> 8) & 0xff] << 8) ^ ((uint32_t)FSb[(Y3 >> 16) & 0xff] << 16) ^ ((uint32_t)FSb[Y0 >> 24] << 24);
-    X2 = *RK++ ^ ((uint32_t)FSb[Y2 & 0xff]) ^ ((uint32_t)FSb[(Y3 >> 8) & 0xff] << 8) ^ ((uint32_t)FSb[(Y0 >> 16) & 0xff] << 16) ^ ((uint32_t)FSb[Y1 >> 24] << 24);
-    X3 = *RK++ ^ ((uint32_t)FSb[Y3 & 0xff]) ^ ((uint32_t)FSb[(Y0 >> 8) & 0xff] << 8) ^ ((uint32_t)FSb[(Y1 >> 16) & 0xff] << 16) ^ ((uint32_t)FSb[Y2 >> 24] << 24);
+    X0 = RK[0] ^ ((uint32_t)FSb[Y0 & 0xff]) ^ ((uint32_t)FSb[(Y1 >> 8) & 0xff] << 8) ^ ((uint32_t)FSb[(Y2 >> 16) & 0xff] << 16) ^ ((uint32_t)FSb[Y3 >> 24] << 24);
+    X1 = RK[1] ^ ((uint32_t)FSb[Y1 & 0xff]) ^ ((uint32_t)FSb[(Y2 >> 8) & 0xff] << 8) ^ ((uint32_t)FSb[(Y3 >> 16) & 0xff] << 16) ^ ((uint32_t)FSb[Y0 >> 24] << 24);
+    X2 = RK[2] ^ ((uint32_t)FSb[Y2 & 0xff]) ^ ((uint32_t)FSb[(Y3 >> 8) & 0xff] << 8) ^ ((uint32_t)FSb[(Y0 >> 16) & 0xff] << 16) ^ ((uint32_t)FSb[Y1 >> 24] << 24);
+    X3 = RK[3] ^ ((uint32_t)FSb[Y3 & 0xff]) ^ ((uint32_t)FSb[(Y0 >> 8) & 0xff] << 8) ^ ((uint32_t)FSb[(Y1 >> 16) & 0xff] << 16) ^ ((uint32_t)FSb[Y2 >> 24] << 24);
 
     PUT_UINT32_LE(state + 0, X0);
     PUT_UINT32_LE(state + 4, X1);
@@ -314,10 +317,11 @@ static void decrypt_block(uint8_t state[AES_BLOCKLEN], const uint32_t* RK, const
 {
     uint32_t X0, X1, X2, X3, Y0, Y1, Y2, Y3;
 
-    X0 = GET_UINT32_LE(state +  0); X0 ^= *RK++;
-    X1 = GET_UINT32_LE(state +  4); X1 ^= *RK++;
-    X2 = GET_UINT32_LE(state +  8); X2 ^= *RK++;
-    X3 = GET_UINT32_LE(state + 12); X3 ^= *RK++;
+    X0 = GET_UINT32_LE(state +  0); X0 ^= RK[0];
+    X1 = GET_UINT32_LE(state +  4); X1 ^= RK[1];
+    X2 = GET_UINT32_LE(state +  8); X2 ^= RK[2];
+    X3 = GET_UINT32_LE(state + 12); X3 ^= RK[3];
+    RK += 4;
 
     for (int i = (num_rounds >> 1) - 1; i > 0; i--) {
         AES_RROUND(Y0, Y1, Y2, Y3, X0, X1, X2, X3);
@@ -326,10 +330,10 @@ static void decrypt_block(uint8_t state[AES_BLOCKLEN], const uint32_t* RK, const
 
     AES_RROUND(Y0, Y1, Y2, Y3, X0, X1, X2, X3);
 
-    X0 = *RK++ ^ ((uint32_t)RSb[Y0 & 0xff]) ^ ((uint32_t)RSb[(Y3 >> 8) & 0xff] << 8) ^ ((uint32_t)RSb[(Y2 >> 16) & 0xff] << 16) ^ ((uint32_t)RSb[Y1 >> 24] << 24);
-    X1 = *RK++ ^ ((uint32_t)RSb[Y1 & 0xff]) ^ ((uint32_t)RSb[(Y0 >> 8) & 0xff] << 8) ^ ((uint32_t)RSb[(Y3 >> 16) & 0xff] << 16) ^ ((uint32_t)RSb[Y2 >> 24] << 24);
-    X2 = *RK++ ^ ((uint32_t)RSb[Y2 & 0xff]) ^ ((uint32_t)RSb[(Y1 >> 8) & 0xff] << 8) ^ ((uint32_t)RSb[(Y0 >> 16) & 0xff] << 16) ^ ((uint32_t)RSb[Y3 >> 24] << 24);
-    X3 = *RK++ ^ ((uint32_t)RSb[Y3 & 0xff]) ^ ((uint32_t)RSb[(Y2 >> 8) & 0xff] << 8) ^ ((uint32_t)RSb[(Y1 >> 16) & 0xff] << 16) ^ ((uint32_t)RSb[Y0 >> 24] << 24);
+    X0 = RK[0] ^ ((uint32_t)RSb[Y0 & 0xff]) ^ ((uint32_t)RSb[(Y3 >> 8) & 0xff] << 8) ^ ((uint32_t)RSb[(Y2 >> 16) & 0xff] << 16) ^ ((uint32_t)RSb[Y1 >> 24] << 24);
+    X1 = RK[1] ^ ((uint32_t)RSb[Y1 & 0xff]) ^ ((uint32_t)RSb[(Y0 >> 8) & 0xff] << 8) ^ ((uint32_t)RSb[(Y3 >> 16) & 0xff] << 16) ^ ((uint32_t)RSb[Y2 >> 24] << 24);
+    X2 = RK[2] ^ ((uint32_t)RSb[Y2 & 0xff]) ^ ((uint32_t)RSb[(Y1 >> 8) & 0xff] << 8) ^ ((uint32_t)RSb[(Y0 >> 16) & 0xff] << 16) ^ ((uint32_t)RSb[Y3 >> 24] << 24);
+    X3 = RK[3] ^ ((uint32_t)RSb[Y3 & 0xff]) ^ ((uint32_t)RSb[(Y2 >> 8) & 0xff] << 8) ^ ((uint32_t)RSb[(Y1 >> 16) & 0xff] << 16) ^ ((uint32_t)RSb[Y0 >> 24] << 24);
 
     PUT_UINT32_LE(state +  0, X0);
     PUT_UINT32_LE(state +  4, X1);
