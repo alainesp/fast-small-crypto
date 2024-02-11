@@ -296,7 +296,7 @@ static void encrypt_block(uint8_t state[AES_BLOCKLEN], const uint32_t* RK, const
     X3 = GET_UINT32_LE(state + 12); X3 ^= RK[3];
     RK += 4;
 
-    for (int i = (num_rounds >> 1) - 1; i > 0; i--) {
+    for (int i = 0; i < (num_rounds >> 1) - 1; i++) {
         AES_FROUND(Y0, Y1, Y2, Y3, X0, X1, X2, X3);
         AES_FROUND(X0, X1, X2, X3, Y0, Y1, Y2, Y3);
     }
@@ -323,7 +323,7 @@ static void decrypt_block(uint8_t state[AES_BLOCKLEN], const uint32_t* RK, const
     X3 = GET_UINT32_LE(state + 12); X3 ^= RK[3];
     RK += 4;
 
-    for (int i = (num_rounds >> 1) - 1; i > 0; i--) {
+    for (int i = 0; i < (num_rounds >> 1) - 1; i++) {
         AES_RROUND(Y0, Y1, Y2, Y3, X0, X1, X2, X3);
         AES_RROUND(X0, X1, X2, X3, Y0, Y1, Y2, Y3);
     }
@@ -386,13 +386,12 @@ void AES_CBC_encrypt(uint8_t* data, const size_t data_length, const uint8_t* key
     key_expansion_encryption(round_key, key, num_rounds);
 
     const uint8_t* current_iv = iv;
-    for (size_t i = 0; i < data_length; i += AES_BLOCKLEN)
+    for (size_t i = 0; i < data_length; i += AES_BLOCKLEN, data += AES_BLOCKLEN)
     {
-        for (uint8_t j = 0; j < AES_BLOCKLEN; j++)
-            data[j] ^= current_iv[j];
+        for (uint8_t j = 0; j < AES_BLOCKLEN; j += 4)
+            PUT_UINT32_LE(data + j, GET_UINT32_LE(data + j) ^ GET_UINT32_LE(current_iv + j));
         encrypt_block(data, round_key, num_rounds);
         current_iv = data;
-        data += AES_BLOCKLEN;
     }
     /* store Iv in ctx for next call */
     //memcpy(ctx_iv, current_iv, AES_BLOCKLEN);
@@ -405,19 +404,18 @@ void AES_CBC_decrypt(uint8_t* data, const size_t data_length, const uint8_t* key
     unsigned num_rounds = key_length / sizeof(uint32_t) + 6; // The number of rounds in AES Cipher.
 
     uint32_t round_key[AES256_ROUNDKEY_DWORDS];
-    uint8_t ctx_iv[AES_BLOCKLEN];
+    uint32_t ctx_iv[AES_BLOCKLEN / sizeof(uint32_t)];
     key_expansion_decryption(round_key, key, num_rounds);
     memcpy(ctx_iv, iv, AES_BLOCKLEN);
 
     uint8_t storeNextIv[AES_BLOCKLEN];
-    for (size_t i = 0; i < data_length; i += AES_BLOCKLEN)
+    for (size_t i = 0; i < data_length; i += AES_BLOCKLEN, data += AES_BLOCKLEN)
     {
         memcpy(storeNextIv, data, AES_BLOCKLEN);
         decrypt_block(data, round_key, num_rounds);
-        for (uint8_t j = 0; j < AES_BLOCKLEN; j++)
-            data[j] ^= ctx_iv[j];
+        for (uint8_t j = 0; j < AES_BLOCKLEN; j += 4)
+            PUT_UINT32_LE(data + j, GET_UINT32_LE(data + j) ^ ctx_iv[j/4]);
         memcpy(ctx_iv, storeNextIv, AES_BLOCKLEN);
-        data += AES_BLOCKLEN;
     }
 }
 
@@ -442,10 +440,8 @@ void AES_CTR_xcrypt(uint8_t* data, const size_t data_length, const uint8_t* key,
 
 
     uint8_t buffer[AES_BLOCKLEN];
-
-    size_t i;
-    int bi;
-    for (i = 0, bi = AES_BLOCKLEN; i < data_length; ++i, ++bi)
+    int bi = AES_BLOCKLEN;
+    for (size_t i = 0; i < data_length; ++i, ++bi)
     {
         if (bi == AES_BLOCKLEN) /* we need to regen xor compliment in buffer */
         {
@@ -467,6 +463,6 @@ void AES_CTR_xcrypt(uint8_t* data, const size_t data_length, const uint8_t* key,
             bi = 0;
         }
 
-        data[i] = (data[i] ^ buffer[bi]);
+        data[i] ^= buffer[bi];
     }
 }
