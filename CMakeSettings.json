@@ -61,6 +61,11 @@
           "name": "FSC_BUILD_BENCHMARK",
           "value": "True",
           "type": "BOOL"
+        },
+        {
+          "name": "BENCHMARK_INSTALL_DOCS",
+          "value": "False",
+          "type": "BOOL"
         }
       ]
     }

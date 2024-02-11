@@ -28,7 +28,7 @@ using namespace simd;
 #define AES256_ROUNDKEY_VEC128 ((240 + 16) / sizeof(simd::Vec128u8)) // 16 more bytes to simplify key generation
 
 // Key expansion, 192-bit case
-static SIMD_INLINE void aesni_set_rk_192(__m128i& state0, __m128i& state1, __m128i xword, unsigned char* rk) noexcept
+static SIMD_INLINE void aesni_set_rk_192(simd::Vec128u8& state0, simd::Vec128u8& state1, simd::Vec128u8 xword, unsigned char* rk) noexcept
 {
     /*
      * Finish generating the next 6 quarter-keys.
@@ -59,10 +59,10 @@ static SIMD_INLINE void aesni_set_rk_192(__m128i& state0, __m128i& state1, __m12
     /* Store state0 and the low half of state1 into rk, which is conceptually
      * an array of 24-byte elements. Since 24 is not a multiple of 16,
      * rk is not necessarily aligned so just `*rk = *state0` doesn't work. */
-    simd::storeu((__m128i*)rk, state0);
-    simd::storeu((__m128i*)(rk+16), state1); // NOTE: Only need to store 8 bytes instead of 16
+    simd::storeu((simd::Vec128u8*)rk, state0);
+    simd::storeu((simd::Vec128u8*)(rk+16), state1); // NOTE: Only need to store 8 bytes instead of 16
 }
-static SIMD_INLINE void aesni_set_rk_256(__m128i state0, __m128i state1, __m128i xword, __m128i& rk0, __m128i& rk1) noexcept
+static SIMD_INLINE void aesni_set_rk_256(simd::Vec128u8 state0, simd::Vec128u8 state1, simd::Vec128u8 xword, simd::Vec128u8& rk0, simd::Vec128u8& rk1) noexcept
 {
     /*
      * Finish generating the next two round keys.
@@ -119,7 +119,7 @@ static void key_expansion_encryption(simd::Vec128u8* RK, const uint8_t* key, con
     case 12:// AES192
         memcpy(RK, key, 24);
         RKv0 = simd::load(RK);
-        RKv1 = _mm_loadl_epi64(RK + 1);
+        RKv1 = (simd::Vec128u8)_mm_loadl_epi64((const __m128i*)RK + 1);
 
         aesni_set_rk_192(RKv0, RKv1, _mm_aeskeygenassist_si128(RKv1, 0x01), ((uint8_t*)RK) + 24 * 1);
         aesni_set_rk_192(RKv0, RKv1, _mm_aeskeygenassist_si128(RKv1, 0x02), ((uint8_t*)RK) + 24 * 2);
