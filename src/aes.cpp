@@ -201,7 +201,7 @@ static void key_expansion_encryption(uint32_t* RK, const uint8_t* key, const uns
     RK[3] = GET_UINT32_LE(key + 12);
 
     switch (num_rounds) {
-    case 10:
+    case 10:// AES128
         for (int i = 0; i < 10; i++, RK += 4) {
             uint32_t RK3 = RK[3];
             RK[4] = RK[0] ^ round_constants[i] ^ ((uint32_t)FSb[(RK3 >> 8) & 0xff]) ^ ((uint32_t)FSb[(RK3 >> 16) & 0xff] << 8) ^ ((uint32_t)FSb[(RK3 >> 24)] << 16) ^ ((uint32_t)FSb[RK3 & 0xff] << 24);
@@ -210,7 +210,7 @@ static void key_expansion_encryption(uint32_t* RK, const uint8_t* key, const uns
             RK[7] = RK3   ^ RK[6];
         }
         break;
-    case 12:
+    case 12:// AES192
         RK[4] = GET_UINT32_LE(key + 16);
         RK[5] = GET_UINT32_LE(key + 20);
 
@@ -224,7 +224,7 @@ static void key_expansion_encryption(uint32_t* RK, const uint8_t* key, const uns
             RK[11] = RK[5] ^ RK[10];
         }
         break;
-    case 14:
+    case 14:// AES256
         RK[4] = GET_UINT32_LE(key + 16);
         RK[5] = GET_UINT32_LE(key + 20);
         RK[6] = GET_UINT32_LE(key + 24);

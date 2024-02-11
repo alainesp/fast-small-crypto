@@ -7,6 +7,7 @@
 // Include the required header
 #include <gtest/gtest.h>
 #include "aes.h"
+#include "simd.hpp"
 #include <wy.hpp>
 
 static const uint8_t aes_key_lengths[] = { AES128_KEY_LENGTH, AES192_KEY_LENGTH, AES256_KEY_LENGTH };
@@ -97,6 +98,69 @@ TEST(aes, ctr_encrypt_decrypt)
 	}
 }
 
+TEST(aesni, ecb_encrypt_decrypt)
+{
+	if (!simd::cpu_supports(simd::CpuFeatures::AES))
+		GTEST_SKIP() << "No AESNI";
+
+	uint8_t original_data[4 * AES_BLOCKLEN];
+	uint8_t processed_data[4 * AES_BLOCKLEN];
+	uint8_t key[AES256_KEY_LENGTH];
+
+	// Create a pseudo-random generator
+	wy::rand r;
+
+	for (size_t i = 0; i < 1024; i++)
+	{
+		r.generate_stream<uint8_t>(key);
+		r.generate_stream<uint8_t>(original_data);
+		memcpy(processed_data, original_data, sizeof(processed_data));
+
+		// Encrypt-Decrypt
+		for (size_t k_index = 0; k_index < std::size(aes_key_lengths); k_index++)
+		{
+			AESNI_ECB_encrypt(processed_data, sizeof(processed_data), key, aes_key_lengths[k_index]);
+			AESNI_ECB_decrypt(processed_data, sizeof(processed_data), key, aes_key_lengths[k_index]);
+
+			// Compare results
+			for (size_t j = 0; j < std::size(original_data); j++)
+				ASSERT_EQ(original_data[j], processed_data[j]);
+		}
+	}
+}
+TEST(aesni, cbc_encrypt_decrypt)
+{
+	if (!simd::cpu_supports(simd::CpuFeatures::AES))
+		GTEST_SKIP() << "No AESNI";
+
+	uint8_t original_data[4 * AES_BLOCKLEN];
+	uint8_t processed_data[4 * AES_BLOCKLEN];
+	uint8_t key[AES256_KEY_LENGTH];
+	uint8_t iv[AES_BLOCKLEN];
+
+	// Create a pseudo-random generator
+	wy::rand r;
+
+	for (size_t i = 0; i < 1024; i++)
+	{
+		r.generate_stream<uint8_t>(key);
+		r.generate_stream<uint8_t>(iv);
+		r.generate_stream<uint8_t>(original_data);
+		memcpy(processed_data, original_data, sizeof(processed_data));
+
+		// Encrypt-Decrypt
+		for (size_t k_index = 0; k_index < std::size(aes_key_lengths); k_index++)
+		{
+			AESNI_CBC_encrypt(processed_data, sizeof(processed_data), key, aes_key_lengths[k_index], iv);
+			AESNI_CBC_decrypt(processed_data, sizeof(processed_data), key, aes_key_lengths[k_index], iv);
+
+			// Compare results
+			for (size_t j = 0; j < std::size(original_data); j++)
+				ASSERT_EQ(original_data[j], processed_data[j]);
+		}
+	}
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 // Cryptographic Algorithm Validation Program [CAVP]
 /////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -113,11 +177,14 @@ enum class AESModes
 	CTR
 };
 
+using AES_ECB_FUNC = void (*)(uint8_t* data, const size_t data_length, const uint8_t* key, const uint8_t key_length) noexcept;
+using AES_CBC_FUNC = void (*)(uint8_t* data, const size_t data_length, const uint8_t* key, const uint8_t key_length, const uint8_t iv[AES_BLOCKLEN]) noexcept;
+
 /// <summary>
 /// Search for all .rsp files in the given directory and perform the tests
 /// </summary>
 /// <param name="dir">The directory to search for test vectors</param>
-static void aes_load_tests_from_directory(const std::string& dir, int repeated) noexcept
+static void aes_load_tests_from_directory(const std::string& dir, int repeated, AES_ECB_FUNC ecb_enc, AES_ECB_FUNC ecb_dec, AES_CBC_FUNC cbc_enc, AES_CBC_FUNC cbc_dec) noexcept
 {
 	uint8_t plaintext[10 * AES_BLOCKLEN];
 	uint8_t ciphertext[sizeof(plaintext)];
@@ -204,7 +271,7 @@ static void aes_load_tests_from_directory(const std::string& dir, int repeated) 
 							case AESModes::CBC:
 								for (int i = 0; i < repeated; i++)
 								{
-									AES_CBC_encrypt(data, plaintext_size, key, key_length, iv);
+									cbc_enc(data, plaintext_size, key, key_length, iv);
 									// Swap data and iv
 									uint8_t tmp[AES_BLOCKLEN];
 									memcpy(tmp, data, AES_BLOCKLEN);
@@ -213,8 +280,8 @@ static void aes_load_tests_from_directory(const std::string& dir, int repeated) 
 								}
 								memcpy(data, iv, AES_BLOCKLEN);
 								break;
-							case AESModes::ECB: for (int i = 0; i < repeated; i++) AES_ECB_encrypt(data, plaintext_size, key, key_length);     break;
-							case AESModes::CTR: for (int i = 0; i < repeated; i++) AES_CTR_xcrypt(data, plaintext_size, key, key_length, iv);  break;
+							case AESModes::ECB: for (int i = 0; i < repeated; i++) ecb_enc(data, plaintext_size, key, key_length);            break;
+							case AESModes::CTR: for (int i = 0; i < repeated; i++) AES_CTR_xcrypt(data, plaintext_size, key, key_length, iv); break;
 							default: ASSERT_TRUE(false); break;
 							}
 							for (size_t j = 0; j < plaintext_size; j++)
@@ -234,7 +301,7 @@ static void aes_load_tests_from_directory(const std::string& dir, int repeated) 
 								for (int i = 0; i < repeated; i++)
 								{
 									memcpy(tmp, data, AES_BLOCKLEN);
-									AES_CBC_decrypt(data, plaintext_size, key, key_length, iv);
+									cbc_dec(data, plaintext_size, key, key_length, iv);
 									memcpy(iv, tmp, AES_BLOCKLEN);
 									// Swap data and tmp2
 									memcpy(tmp, data, AES_BLOCKLEN);
@@ -243,8 +310,8 @@ static void aes_load_tests_from_directory(const std::string& dir, int repeated) 
 								}
 								memcpy(data, tmp2, AES_BLOCKLEN);
 								break;
-							case AESModes::ECB: for (int i = 0; i < repeated; i++) AES_ECB_decrypt(data, plaintext_size, key, key_length);     break;
-							case AESModes::CTR: for (int i = 0; i < repeated; i++) AES_CTR_xcrypt(data, plaintext_size, key, key_length, iv);  break;
+							case AESModes::ECB: for (int i = 0; i < repeated; i++) ecb_dec(data, plaintext_size, key, key_length);            break;
+							case AESModes::CTR: for (int i = 0; i < repeated; i++) AES_CTR_xcrypt(data, plaintext_size, key, key_length, iv); break;
 							default: ASSERT_TRUE(false); break;
 							}
 							// Compare results
@@ -266,15 +333,36 @@ static void aes_load_tests_from_directory(const std::string& dir, int repeated) 
 // AES Known Answer Test (KAT) Vectors
 TEST(aes, KAT_vectors)
 {
-	aes_load_tests_from_directory(TEST_DIR "KAT_AES", 1);
+	aes_load_tests_from_directory(TEST_DIR "KAT_AES", 1, AES_ECB_encrypt, AES_ECB_decrypt, AES_CBC_encrypt, AES_CBC_decrypt);
+}
+TEST(aesni, KAT_vectors)
+{
+	if (!simd::cpu_supports(simd::CpuFeatures::AES))
+		GTEST_SKIP() << "No AESNI";
+
+	aes_load_tests_from_directory(TEST_DIR "KAT_AES", 1, AESNI_ECB_encrypt, AESNI_ECB_decrypt, AESNI_CBC_encrypt, AESNI_CBC_decrypt);
 }
 // AES Monte Carlo Test (MCT) Sample Vectors
 TEST(aes, MCT_vectors)
 {
-	aes_load_tests_from_directory(TEST_DIR "aesmct", 1000);
+	aes_load_tests_from_directory(TEST_DIR "aesmct", 1000, AES_ECB_encrypt, AES_ECB_decrypt, AES_CBC_encrypt, AES_CBC_decrypt);
+}
+TEST(aesni, MCT_vectors)
+{
+	if (!simd::cpu_supports(simd::CpuFeatures::AES))
+		GTEST_SKIP() << "No AESNI";
+
+	aes_load_tests_from_directory(TEST_DIR "aesmct", 1000, AESNI_ECB_encrypt, AESNI_ECB_decrypt, AESNI_CBC_encrypt, AESNI_CBC_decrypt);
 }
 // AES Multiblock Message Test (MMT) Sample Vectors
 TEST(aes, MMT_vectors)
 {
-	aes_load_tests_from_directory(TEST_DIR "aesmmt", 1);
+	aes_load_tests_from_directory(TEST_DIR "aesmmt", 1, AES_ECB_encrypt, AES_ECB_decrypt, AES_CBC_encrypt, AES_CBC_decrypt);
+}
+TEST(aesni, MMT_vectors)
+{
+	if (!simd::cpu_supports(simd::CpuFeatures::AES))
+		GTEST_SKIP() << "No AESNI";
+
+	aes_load_tests_from_directory(TEST_DIR "aesmmt", 1, AESNI_ECB_encrypt, AESNI_ECB_decrypt, AESNI_CBC_encrypt, AESNI_CBC_decrypt);
 }
