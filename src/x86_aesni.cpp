@@ -8,7 +8,7 @@
 // 
 // AES modes:
 //		- CBC enables AES encryption in CBC-mode of operation.
-//		- CTR enables encryption in counter-mode.
+//		- [NOT IMPLEMENTED] CTR enables encryption in counter-mode.
 //		- ECB enables the basic ECB 16-byte block algorithm.
 //
 // [AES-WP]   https://www.intel.com/content/www/us/en/developer/articles/tool/intel-advanced-encryption-standard-aes-instructions-set.html
@@ -64,12 +64,12 @@ static SIMD_INLINE void aesni_set_rk_256(simd::Vec128u8 state0, simd::Vec128u8 s
 }
 
 // This function produces 4*(Nr+1) round keys. The round keys are used in each round to decrypt the states. 
-static void key_expansion_encryption(simd::Vec128u8* RK, const uint8_t* key, const unsigned num_rounds) noexcept
+template<uint8_t AES_KEY_LENGTH> static SIMD_INLINE void key_expansion_encryption(simd::Vec128u8* RK, const uint8_t* key) noexcept
 {
     simd::Vec128u8 RKv0, RKv1, t;
 
-    switch (num_rounds) {
-    case 10:// AES128
+    if constexpr (AES_KEY_LENGTH == AES128_KEY_LENGTH)
+    {
         RKv0 = simd::loadu((const simd::Vec128u8*)key);                                                                                                                 simd::store(RK +  0, RKv0);
         t = _mm_aeskeygenassist_si128(RKv0, 0x01); RKv0 ^= _mm_slli_si128(RKv0, 4) ^ _mm_shuffle_epi32(t, 0xff)  ^ _mm_slli_si128(RKv0, 8) ^ _mm_slli_si128(RKv0, 12);  simd::store(RK +  1, RKv0);
         t = _mm_aeskeygenassist_si128(RKv0, 0x02); RKv0 ^= _mm_slli_si128(RKv0, 4) ^ _mm_shuffle_epi32(t, 0xff)  ^ _mm_slli_si128(RKv0, 8) ^ _mm_slli_si128(RKv0, 12);  simd::store(RK +  2, RKv0);
@@ -81,8 +81,9 @@ static void key_expansion_encryption(simd::Vec128u8* RK, const uint8_t* key, con
         t = _mm_aeskeygenassist_si128(RKv0, 0x80); RKv0 ^= _mm_slli_si128(RKv0, 4) ^ _mm_shuffle_epi32(t, 0xff)  ^ _mm_slli_si128(RKv0, 8) ^ _mm_slli_si128(RKv0, 12);  simd::store(RK +  8, RKv0);
         t = _mm_aeskeygenassist_si128(RKv0, 0x1B); RKv0 ^= _mm_slli_si128(RKv0, 4) ^ _mm_shuffle_epi32(t, 0xff)  ^ _mm_slli_si128(RKv0, 8) ^ _mm_slli_si128(RKv0, 12);  simd::store(RK +  9, RKv0);
         t = _mm_aeskeygenassist_si128(RKv0, 0x36); RKv0 ^= _mm_slli_si128(RKv0, 4) ^ _mm_shuffle_epi32(t, 0xff)  ^ _mm_slli_si128(RKv0, 8) ^ _mm_slli_si128(RKv0, 12);  simd::store(RK + 10, RKv0);
-        break;
-    case 12:// AES192
+     }
+    if constexpr (AES_KEY_LENGTH == AES192_KEY_LENGTH)
+    {
         memcpy(RK, key, 24);
         RKv0 = simd::load(RK);
         RKv1 = (simd::Vec128u8)_mm_loadl_epi64((const __m128i*)RK + 1);
@@ -95,8 +96,9 @@ static void key_expansion_encryption(simd::Vec128u8* RK, const uint8_t* key, con
         RKv0 ^= _mm_shuffle_epi32(_mm_aeskeygenassist_si128(RKv1, 0x20), 0x55) ^ _mm_slli_si128(RKv0, 4) ^ _mm_slli_si128(RKv0, 8) ^ _mm_slli_si128(RKv0, 12);   RKv1 ^= _mm_shuffle_epi32(RKv0, 0xff) ^ _mm_slli_si128(RKv1, 4);   simd::storeu((simd::Vec128u8*)(((uint8_t*)RK) + 24 * 6), RKv0); simd::storeu((simd::Vec128u8*)(((uint8_t*)RK) + 24 * 6 + 16), RKv1);
         RKv0 ^= _mm_shuffle_epi32(_mm_aeskeygenassist_si128(RKv1, 0x40), 0x55) ^ _mm_slli_si128(RKv0, 4) ^ _mm_slli_si128(RKv0, 8) ^ _mm_slli_si128(RKv0, 12);   RKv1 ^= _mm_shuffle_epi32(RKv0, 0xff) ^ _mm_slli_si128(RKv1, 4);   simd::storeu((simd::Vec128u8*)(((uint8_t*)RK) + 24 * 7), RKv0); simd::storeu((simd::Vec128u8*)(((uint8_t*)RK) + 24 * 7 + 16), RKv1);
         RKv0 ^= _mm_shuffle_epi32(_mm_aeskeygenassist_si128(RKv1, 0x80), 0x55) ^ _mm_slli_si128(RKv0, 4) ^ _mm_slli_si128(RKv0, 8) ^ _mm_slli_si128(RKv0, 12);   RKv1 ^= _mm_shuffle_epi32(RKv0, 0xff) ^ _mm_slli_si128(RKv1, 4);   simd::storeu((simd::Vec128u8*)(((uint8_t*)RK) + 24 * 8), RKv0); simd::storeu((simd::Vec128u8*)(((uint8_t*)RK) + 24 * 8 + 16), RKv1);
-        break;
-    case 14:// AES256
+    }
+    if constexpr (AES_KEY_LENGTH == AES256_KEY_LENGTH)
+    {
         RKv0 = simd::loadu((const simd::Vec128u8*)key);
         RKv1 = simd::loadu((const simd::Vec128u8*)(key + 16));
         simd::store(RK + 0, RKv0); simd::store(RK + 1, RKv1);
@@ -108,12 +110,12 @@ static void key_expansion_encryption(simd::Vec128u8* RK, const uint8_t* key, con
         aesni_set_rk_256(RKv0, RKv1, _mm_aeskeygenassist_si128(RKv1, 0x10), RKv0, RKv1);   simd::store(RK + 10, RKv0); simd::store(RK + 11, RKv1);
         aesni_set_rk_256(RKv0, RKv1, _mm_aeskeygenassist_si128(RKv1, 0x20), RKv0, RKv1);   simd::store(RK + 12, RKv0); simd::store(RK + 13, RKv1);
         aesni_set_rk_256(RKv0, RKv1, _mm_aeskeygenassist_si128(RKv1, 0x40), RKv0, RKv1);   simd::store(RK + 14, RKv0); simd::store(RK + 15, RKv1);
-        break;
     }
 }
-static void key_expansion_decryption(simd::Vec128u8* RK, const uint8_t* key, const unsigned num_rounds) noexcept
+template<uint8_t AES_KEY_LENGTH> static SIMD_INLINE void key_expansion_decryption(simd::Vec128u8* RK, const uint8_t* key) noexcept
 {
-    key_expansion_encryption(RK, key, num_rounds);
+    key_expansion_encryption<AES_KEY_LENGTH>(RK, key);
+    constexpr unsigned num_rounds = AES_KEY_LENGTH / sizeof(uint32_t) + 6; // The number of rounds in AES Cipher.
 
     // Reverse data on RK
     simd::Vec128u8* rk_tail = RK + num_rounds;
@@ -164,10 +166,15 @@ void AESNI_ECB_encrypt(uint8_t* data, const size_t data_length, const uint8_t* k
     assert(key_length == AES128_KEY_LENGTH || key_length == AES192_KEY_LENGTH || key_length == AES256_KEY_LENGTH);
     assert(data_length % AES_BLOCKLEN == 0);
 
-    unsigned num_rounds = key_length / sizeof(uint32_t) + 6; // The number of rounds in AES Cipher.
-
     simd::Vec128u8 round_key[AES256_ROUNDKEY_VEC128];
-    key_expansion_encryption(round_key, key, num_rounds);
+    switch (key_length)
+    {
+    case AES128_KEY_LENGTH: key_expansion_encryption<AES128_KEY_LENGTH>(round_key, key); break;
+    case AES192_KEY_LENGTH: key_expansion_encryption<AES192_KEY_LENGTH>(round_key, key); break;
+    case AES256_KEY_LENGTH: key_expansion_encryption<AES256_KEY_LENGTH>(round_key, key); break;
+    }
+
+    unsigned num_rounds = key_length / sizeof(uint32_t) + 6; // The number of rounds in AES Cipher.
     for (size_t i = 0; i < data_length; i += AES_BLOCKLEN)
         encrypt_block(data + i, round_key, num_rounds);
 }
@@ -176,10 +183,15 @@ void AESNI_ECB_decrypt(uint8_t* data, const size_t data_length, const uint8_t* k
     assert(key_length == AES128_KEY_LENGTH || key_length == AES192_KEY_LENGTH || key_length == AES256_KEY_LENGTH);
     assert(data_length % AES_BLOCKLEN == 0);
 
-    unsigned num_rounds = key_length / sizeof(uint32_t) + 6; // The number of rounds in AES Cipher.
-
     simd::Vec128u8 round_key[AES256_ROUNDKEY_VEC128];
-    key_expansion_decryption(round_key, key, num_rounds);
+    switch (key_length)
+    {
+    case AES128_KEY_LENGTH: key_expansion_decryption<AES128_KEY_LENGTH>(round_key, key); break;
+    case AES192_KEY_LENGTH: key_expansion_decryption<AES192_KEY_LENGTH>(round_key, key); break;
+    case AES256_KEY_LENGTH: key_expansion_decryption<AES256_KEY_LENGTH>(round_key, key); break;
+    }
+
+    unsigned num_rounds = key_length / sizeof(uint32_t) + 6; // The number of rounds in AES Cipher.
     for (size_t i = 0; i < data_length; i += AES_BLOCKLEN)
         decrypt_block(data + i, round_key, num_rounds);
 }
@@ -194,12 +206,16 @@ void AESNI_CBC_encrypt(uint8_t* data, const size_t data_length, const uint8_t* k
     assert(key_length == AES128_KEY_LENGTH || key_length == AES192_KEY_LENGTH || key_length == AES256_KEY_LENGTH);
     assert(data_length % AES_BLOCKLEN == 0);
 
-    unsigned num_rounds = key_length / sizeof(uint32_t) + 6; // The number of rounds in AES Cipher.
-
     simd::Vec128u8 round_key[AES256_ROUNDKEY_VEC128];
-    key_expansion_encryption(round_key, key, num_rounds);
+    switch (key_length)
+    {
+    case AES128_KEY_LENGTH: key_expansion_encryption<AES128_KEY_LENGTH>(round_key, key); break;
+    case AES192_KEY_LENGTH: key_expansion_encryption<AES192_KEY_LENGTH>(round_key, key); break;
+    case AES256_KEY_LENGTH: key_expansion_encryption<AES256_KEY_LENGTH>(round_key, key); break;
+    }
 
     simd::Vec128u8 current_iv = simd::loadu((const Vec128u8*)iv);
+    unsigned num_rounds = key_length / sizeof(uint32_t) + 6; // The number of rounds in AES Cipher.
     for (size_t i = 0; i < data_length; i += AES_BLOCKLEN, data += AES_BLOCKLEN)
     {
         simd::storeu((Vec128u8*)data, simd::loadu((const Vec128u8*)data) ^ current_iv);
@@ -211,13 +227,17 @@ void AESNI_CBC_decrypt(uint8_t* data, const size_t data_length, const uint8_t* k
 {
     assert(key_length == AES128_KEY_LENGTH || key_length == AES192_KEY_LENGTH || key_length == AES256_KEY_LENGTH);
     assert(data_length % AES_BLOCKLEN == 0);
-
-    unsigned num_rounds = key_length / sizeof(uint32_t) + 6; // The number of rounds in AES Cipher.
-
+  
     simd::Vec128u8 round_key[AES256_ROUNDKEY_VEC128];
-    key_expansion_decryption(round_key, key, num_rounds);
-    simd::Vec128u8 ctx_iv = simd::loadu((const Vec128u8*)iv);
+    switch (key_length)
+    {
+    case AES128_KEY_LENGTH: key_expansion_decryption<AES128_KEY_LENGTH>(round_key, key); break;
+    case AES192_KEY_LENGTH: key_expansion_decryption<AES192_KEY_LENGTH>(round_key, key); break;
+    case AES256_KEY_LENGTH: key_expansion_decryption<AES256_KEY_LENGTH>(round_key, key); break;
+    }
 
+    simd::Vec128u8 ctx_iv = simd::loadu((const Vec128u8*)iv);
+    unsigned num_rounds = key_length / sizeof(uint32_t) + 6; // The number of rounds in AES Cipher.
     for (size_t i = 0; i < data_length; i += AES_BLOCKLEN, data += AES_BLOCKLEN)
     {
         simd::Vec128u8 tmp_iv = simd::loadu((const Vec128u8*)data);

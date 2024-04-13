@@ -47,13 +47,13 @@ add_library(FSC STATIC "src/cpuid.cpp" "src/x86_shani.cpp" "src/aes.cpp" "src/x8
     "src/md4_avx2.cpp"   "src/md5_avx2.cpp"   "src/sha1_avx2.cpp"   "src/sha256_avx2.cpp"   "src/sha512_avx2.cpp"
     "src/md4_avx512.cpp" "src/md5_avx512.cpp" "src/sha1_avx512.cpp" "src/sha256_avx512.cpp" "src/sha512_avx512.cpp"
 )
-if(CMAKE_COMPILER_IS_GNUCXX)
-    target_compile_options(FSC PRIVATE -O3 -DNDEBUG)
-elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    target_compile_options(FSC PRIVATE -fomit-frame-pointer -O3 -DNDEBUG)
-elseif(MSVC)
-    target_compile_options(FSC PRIVATE /O2 /DNDEBUG)
-endif()
+#if(CMAKE_COMPILER_IS_GNUCXX)
+#    target_compile_options(FSC PRIVATE -O3 -DNDEBUG)
+#elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+#    target_compile_options(FSC PRIVATE -fomit-frame-pointer -O3 -DNDEBUG)
+#elseif(MSVC)
+#    target_compile_options(FSC PRIVATE /O2 /DNDEBUG)
+#endif()
 target_include_directories(FSC INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 set_target_properties(FSC PROPERTIES CXX_STANDARD 20 INTERPROCEDURAL_OPTIMIZATION TRUE)
 
